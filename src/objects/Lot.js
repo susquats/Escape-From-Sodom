@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { MOVE } from '../config.js';
+import { MOVE, ANGEL } from '../config.js';
 
 export default class Lot extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -15,6 +15,19 @@ export default class Lot extends Phaser.Physics.Arcade.Sprite {
     this.facing = 1;
     this.jumpCut = false;
     this.onGround = false;
+    this.accelMul = 1;
+    this.protected = false;
+  }
+
+  setBoost(on) {
+    this.accelMul = on ? ANGEL.accelMultiplier : 1;
+    this.body.setMaxVelocity(on ? ANGEL.runSpeed : MOVE.runSpeed, MOVE.maxFallSpeed);
+    this.protected = on;
+  }
+
+  isStomping(targetBody) {
+    const b = this.body;
+    return b.velocity.y > 0 && b.prev.y + b.height <= targetBody.top + 4;
   }
 
   update(controls, delta) {
@@ -25,7 +38,7 @@ export default class Lot extends Phaser.Physics.Arcade.Sprite {
 
     // horizontal
     if (dir !== 0) {
-      body.setAccelerationX(dir * (onGround ? MOVE.groundAccel : MOVE.airAccel));
+      body.setAccelerationX(dir * (onGround ? MOVE.groundAccel : MOVE.airAccel) * this.accelMul);
       body.setDragX(0);
       // instant turnaround feels arcade-y
       if (Math.sign(body.velocity.x) === -dir) body.setVelocityX(0);

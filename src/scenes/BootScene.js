@@ -74,6 +74,27 @@ export default class BootScene extends Phaser.Scene {
     g.generateTexture('x', 7, 7);
     g.clear();
 
+    // Sodomite 12x18
+    g.fillStyle(0xa0402a).fillRect(0, 0, 12, 18);
+    g.fillStyle(0x4a2c14).fillRect(0, 0, 12, 5);
+    g.fillStyle(0x6e2a1a).fillRect(0, 10, 12, 2);
+    g.fillStyle(0x000000).fillRect(8, 7, 2, 2).fillRect(7, 5, 3, 1);
+    g.generateTexture('sodomite', 12, 18);
+    g.clear();
+
+    // Angel 16x18
+    g.fillStyle(0xcfd8e6).fillRect(0, 3, 4, 8).fillRect(12, 3, 4, 8);
+    g.fillStyle(0xf4f4f4).fillRect(4, 4, 8, 14);
+    g.fillStyle(0xf2c9a0).fillRect(6, 4, 4, 3);
+    g.fillStyle(0xffe14a).fillRect(5, 0, 6, 1);
+    g.generateTexture('angel', 16, 18);
+    g.clear();
+
+    // Halo 10x5
+    g.fillStyle(0xffe14a).fillRect(2, 0, 6, 1).fillRect(2, 4, 6, 1).fillRect(0, 1, 2, 3).fillRect(8, 1, 2, 3);
+    g.generateTexture('halo', 10, 5);
+    g.clear();
+
     // Puff pixel 2x2
     g.fillStyle(0xffffff).fillRect(0, 0, 2, 2);
     g.generateTexture('pixel', 2, 2);

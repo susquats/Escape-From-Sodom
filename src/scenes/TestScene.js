@@ -7,6 +7,9 @@ import Family from '../objects/Family.js';
 import FireVent from '../objects/FireVent.js';
 import Destruction from '../objects/Destruction.js';
 import Sulfur from '../objects/Sulfur.js';
+import Sodomite from '../objects/Sodomite.js';
+import Halo from '../objects/Halo.js';
+import AngelBoost from '../objects/AngelBoost.js';
 import FamilyHud from '../ui/FamilyHud.js';
 import { resetRun } from '../runState.js';
 
@@ -49,12 +52,40 @@ export default class TestScene extends Phaser.Scene {
     this.addHazard(this.sulfur.flames);
     this.addHazard(this.sulfur.balls, () => true, h => h.destroy());
     this.physics.add.overlap(this.lot, this.family.saltGroup, (lot, salt) => {
-      const lb = lot.body;
-      const prevBottom = lb.prev.y + lb.height;
-      if (lb.velocity.y > 0 && prevBottom <= salt.body.top + 4) {
-        lb.setVelocityY(-MOVE.stompBounce);
+      if (lot.isStomping(salt.body)) {
+        lot.body.setVelocityY(-MOVE.stompBounce);
         salt.member.rescue();
       }
+    });
+
+    const ex = (tx) => tx * TILE + TILE / 2;
+    this.enemies = [
+      new Sodomite(this, ex(28), (STREET - 3) * TILE - 9),
+      new Sodomite(this, ex(47), STREET * TILE - 9),
+      new Sodomite(this, ex(92), STREET * TILE - 9),
+      new Sodomite(this, ex(108), STREET * TILE - 9),
+      new Sodomite(this, ex(118), STREET * TILE - 9),
+      new Sodomite(this, ex(130), STREET * TILE - 9),
+    ];
+    this.physics.add.collider(this.enemies, this.terrain);
+    this.physics.add.overlap(this.lot, this.enemies, (lot, e) => {
+      if (!e.alive) return;
+      if (lot.protected) { e.bonk(lot.x); return; }
+      if (lot.isStomping(e.body)) { e.squash(); lot.body.setVelocityY(-MOVE.stompBounce); return; }
+      this.killLot();
+    });
+    this.physics.add.overlap(this.family.members, this.enemies, (m, e) => { if (e.alive && e.awake) m.saltify(); });
+    this.physics.add.overlap(this.sulfur.balls, this.enemies, (ball, e) => { if (e.alive) { e.burn(); ball.destroy(); } });
+
+    this.boost = new AngelBoost(this, this.lot, this.family);
+    this.halos = [
+      new Halo(this, ex(59), (STREET - 4) * TILE - 28),
+      new Halo(this, ex(100), STREET * TILE - 44),
+    ];
+    this.physics.add.overlap(this.lot, this.halos, (lot, h) => {
+      if (!h.active) return;
+      h.collect();
+      this.boost.start();
     });
 
     const cam = this.cameras.main;
@@ -70,7 +101,7 @@ export default class TestScene extends Phaser.Scene {
 
     const touch = this.sys.game.device.input.touch;
     const hint = this.add.text(GAME_WIDTH / 2, 10,
-      (touch ? 'Buttons to move & jump' : '← → move   SPACE jump   R restart') + '\nJump on salt to rescue!',
+      (touch ? 'Buttons to move & jump' : '← → move   SPACE jump   R restart') + '\nStomp Sodomites. Stomp salt to rescue!',
       { fontFamily: 'monospace', fontSize: '8px', color: '#fff' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(900).setAlign('center');
     this.tweens.add({ targets: hint, alpha: 0, delay: 4000, duration: 600 });
@@ -82,6 +113,7 @@ export default class TestScene extends Phaser.Scene {
       this.debugKeys = ['ONE', 'TWO', 'THREE'].map(k => this.input.keyboard.addKey(K[k]));
       this.keyZero = this.input.keyboard.addKey(K.ZERO);
       this.keyFour = this.input.keyboard.addKey(K.FOUR);
+      this.keyFive = this.input.keyboard.addKey(K.FIVE);
     }
   }
 
@@ -99,8 +131,9 @@ export default class TestScene extends Phaser.Scene {
     });
   }
 
-  killLot() {
+  killLot(force = false) {
     if (this.restarting) return;
+    if (this.lot.protected && !force) return;
     this.restarting = true;
     this.physics.pause();
     const lot = this.lot;
@@ -164,7 +197,7 @@ export default class TestScene extends Phaser.Scene {
     this.controls.update();
     if (this.restarting) return;
 
-    if (this.lot.y > WORLD_H + 40) { this.killLot(); return; }
+    if (this.lot.y > WORLD_H + 40) { this.killLot(true); return; }
     if (this.controls.restartPressed) {
       if (this.finished) resetRun();
       this.restarting = true;
@@ -176,13 +209,15 @@ export default class TestScene extends Phaser.Scene {
     this.lot.update(this.controls, delta);
     this.trail.record(this.lot.x, this.lot.body.bottom, this.lot.facing, this.lot.onGround);
     this.family.update(delta);
+    this.enemies.forEach(e => e.update(this.lot, cam, this.destruction.x, WORLD_H));
+    this.boost.update(delta);
     this.vents.forEach(v => v.update(delta));
 
     if (!this.finished) {
       this.destruction.update(delta, cam);
       this.sulfur.update(delta, this.lot, cam);
       this.family.applyDestruction(this.destruction.x);
-      if (this.lot.body.left < this.destruction.x) { this.killLot(); return; }
+      if (this.lot.body.left < this.destruction.x) { this.killLot(true); return; }
       if (this.lot.x > 140 * TILE) this.finish();
     }
 
@@ -194,9 +229,10 @@ export default class TestScene extends Phaser.Scene {
       });
       if (Phaser.Input.Keyboard.JustDown(this.keyZero)) { resetRun(); this.restarting = true; this.scene.restart(); return; }
       if (Phaser.Input.Keyboard.JustDown(this.keyFour)) this.family.members[0].lookTimer = 0;
+      if (Phaser.Input.Keyboard.JustDown(this.keyFive)) this.boost.start();
       const b = this.lot.body;
       this.debugText.setText(
-        `vx ${b.velocity.x.toFixed(0)} vy ${b.velocity.y.toFixed(0)} onGround ${this.lot.onGround} wall:${this.destruction.x | 0} balls:${this.sulfur.balls.getLength()}\n` +
+        `vx ${b.velocity.x.toFixed(0)} vy ${b.velocity.y.toFixed(0)} onGround ${this.lot.onGround} wall:${this.destruction.x | 0} balls:${this.sulfur.balls.getLength()} enemies:${this.enemies.filter(e => e.alive).length} boost:${Math.max(0, this.boost.timer | 0)}\n` +
         this.family.members.map(m => `${m.memberName}:${m.state}`).join(' '));
     }
   }

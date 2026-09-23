@@ -31,3 +31,10 @@ npm run preview   # serve the production build
 - **HUD** (top-left): family icons — normal / salt shaker / dim with red X.
 - Debug (`?debug`): `0` reset run, `4` force the wife's look-back, `1`/`2`/`3` salt wife/daughters.
 - Tuning: `DESTRUCTION`, `SULFUR`, `WIFE` in `src/config.js`.
+
+## Milestone 4: Sodomites & halos
+
+- **Sodomites** stand still until they come on screen, then walk toward Lot (hopping over walls). Stomp them from above; any other contact kills Lot. Touching a family member turns them to salt. The destruction wall and fireballs burn them.
+- **Halos** summon two angels for a few seconds: Lot runs faster, is protected from hazards and enemies (enemies get bonked; pits and the destruction wall still kill), salted family are rescued and everyone is briefly invulnerable. Grabbing another halo mid-boost extends it.
+- Debug (`?debug`): `5` triggers an angel boost; the debug line shows enemy count and boost timer.
+- Tuning: `SODOMITE` and `ANGEL` in `src/config.js`.

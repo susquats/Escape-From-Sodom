@@ -60,3 +60,17 @@ export const WIFE = {
 };
 
 export const DEBUG = new URLSearchParams(location.search).has('debug');
+
+export const SODOMITE = {
+  speed: 45,            // px/s (Lot runs 110)
+  hopVelocity: 240,     // hop when blocked by a wall (~2 tiles)
+  wakeMargin: 24,       // wakes when within this many px right of the camera's right edge
+  squashMs: 400,        // flattened time before fading
+};
+
+export const ANGEL = {
+  durationMs: 3200,
+  runSpeed: 185,        // Lot's boosted max speed
+  accelMultiplier: 1.6,
+  swoopMs: 350,         // entry/exit flight time
+};

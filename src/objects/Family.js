@@ -23,6 +23,10 @@ export default class Family {
     this.members.forEach(m => m.update(delta));
   }
 
+  rescueAll() { this.members.forEach(m => { if (m.state === 'salted') m.rescue(); }); }
+
+  protect(ms) { this.members.forEach(m => { if (m.state !== 'lost') m.invulnTimer = Math.max(m.invulnTimer, ms); }); }
+
   applyDestruction(wallX) {
     this.members.forEach(m => { if (m.state !== 'lost' && m.worldX < wallX) m.lose(); });
   }
