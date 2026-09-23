@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import './style.css';
 import { GAME_WIDTH, GAME_HEIGHT, MOVE, DEBUG } from './config.js';
 import BootScene from './scenes/BootScene.js';
-import TestScene from './scenes/TestScene.js';
+import SodomScene from './scenes/SodomScene.js';
+import FlightScene from './scenes/FlightScene.js';
 
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -17,6 +18,6 @@ const game = new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   input: { activePointers: 3 }, // multitouch
   physics: { default: 'arcade', arcade: { gravity: { y: MOVE.gravity }, debug: DEBUG } },
-  scene: [BootScene, TestScene],
+  scene: [BootScene, SodomScene, FlightScene],
 });
 if (DEBUG) window.game = game;

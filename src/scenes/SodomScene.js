@@ -12,23 +12,28 @@ import Halo from '../objects/Halo.js';
 import AngelBoost from '../objects/AngelBoost.js';
 import FamilyHud from '../ui/FamilyHud.js';
 import { resetRun } from '../runState.js';
+import { popText } from '../fx.js';
 
 const WORLD_W = 2400;
 const WORLD_H = 360;
 const STREET = 16; // street-level tile row
 
-export default class TestScene extends Phaser.Scene {
+export default class SodomScene extends Phaser.Scene {
   constructor() {
-    super('TestScene');
+    super('SodomScene');
   }
 
   create() {
+    this.physics.world.gravity.y = MOVE.gravity;
+    this.cutscene = false;
+    this.lifting = false;
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.physics.world.setBoundsCollision(true, true, true, false);
 
     this.buildBackground();
     this.terrain = this.physics.add.staticGroup();
     this.buildLevel();
+    this.buildChasm();
 
     this.lot = new Lot(this, 48, STREET * TILE - 10);
     this.physics.add.collider(this.lot, this.terrain);
@@ -46,7 +51,6 @@ export default class TestScene extends Phaser.Scene {
     this.destruction = new Destruction(this, WORLD_H);
     this.sulfur = new Sulfur(this, this.terrain, WORLD_W, WORLD_H);
     this.hud = new FamilyHud(this, this.family);
-    this.finished = false;
 
     this.addHazard(this.vents, v => v.isHot);
     this.addHazard(this.sulfur.flames);
@@ -132,6 +136,7 @@ export default class TestScene extends Phaser.Scene {
   }
 
   killLot(force = false) {
+    if (this.cutscene) return;
     if (this.restarting) return;
     if (this.lot.protected && !force) return;
     this.restarting = true;
@@ -145,14 +150,59 @@ export default class TestScene extends Phaser.Scene {
     this.time.delayedCall(800, () => this.scene.restart());
   }
 
-  finish() {
-    this.finished = true;
+  startPickup() {
+    this.cutscene = true;
     this.destruction.stopped = true;
     this.sulfur.stop();
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2,
-      `SAFE!\nFamily: ${this.family.savedCount}/3\nR to play again`,
-      { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 })
-      .setOrigin(0.5).setAlign('center').setScrollFactor(0).setDepth(900);
+    if (this.boost.timer > 0) this.boost.end();
+    const { lot, family } = this;
+    const cam = this.cameras.main;
+    lot.body.setAcceleration(0, 0);
+    lot.body.setVelocityX(0);
+    lot.body.setDragX(2000);
+    lot.setFlipX(false);
+    family.members[0].cancelLook();
+    family.members.forEach(m => { if (m.state === 'salted') m.lose(); });
+    popText(this, lot.x, lot.y - 24, '!');
+
+    this.time.delayedCall(500, () => {
+      const angels = [0, 1].map(() => this.add.image(cam.scrollX - 20, cam.scrollY - 20, 'angel').setDepth(700));
+      const vis = () => family.members.filter(m => m.visible && m.state !== 'lost');
+      const v = vis();
+      const bx = v.length ? v.reduce((sum, m) => sum + m.x, 0) / v.length : lot.x - 30;
+      const by = v.length ? v[0].y - v[0].height - 22 : lot.y - lot.height - 6;
+      const targets = [{ x: lot.x, y: lot.y - lot.height - 6 }, { x: bx, y: by }];
+      popText(this, lot.x, lot.y - 30, 'HALLELUJAH!', '#ffe14a');
+      angels.forEach((a, i) => {
+        this.tweens.add({ targets: a, x: targets[i].x, y: targets[i].y, duration: 500,
+          onComplete: () => { if (i === 0) this.lift(angels, vis()); } });
+      });
+    });
+  }
+
+  lift(angels, members) {
+    this.lifting = true;
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    this.lot.body.enable = false;
+    const targets = [this.lot, ...angels, ...members];
+    targets.forEach((t, i) => {
+      this.tweens.add({ targets: t, y: '-=220', x: '+=40', duration: 1400, ease: 'Sine.in',
+        onComplete: () => {
+          if (i !== 0) return;
+          cam.fadeOut(400);
+          cam.once('camerafadeoutcomplete', () => this.scene.start('FlightScene'));
+        } });
+    });
+  }
+
+  buildChasm() {
+    const x0 = 144 * TILE, top = STREET * TILE + 8;
+    this.add.rectangle(x0, top, WORLD_W - x0, WORLD_H - top, 0x3a0808).setOrigin(0).setDepth(-0.8);
+    for (let i = 0; i < 6; i++) {
+      const f = this.add.image(x0 + 8 + i * 16 + Phaser.Math.Between(-3, 3), top, 'flame').setOrigin(0.5, 1).setDepth(-0.7);
+      this.tweens.add({ targets: f, scaleY: 0.6, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
+    }
   }
 
   buildBackground() {
@@ -189,7 +239,7 @@ export default class TestScene extends Phaser.Scene {
     this.platform(63, 11, 3);      // 6. floating platforms over the pit
     this.platform(69, 10, 3);
     this.platform(75, 11, 3);
-    solid(82, STREET, 68);         // 8. end area (7. pit is tx 61-81)
+    solid(82, STREET, 62);         // 8. end area (7. pit is tx 61-81)
     this.platform(140, STREET - 6, 2, 6); // city gate marker
   }
 
@@ -197,9 +247,14 @@ export default class TestScene extends Phaser.Scene {
     this.controls.update();
     if (this.restarting) return;
 
+    if (this.cutscene) {
+      if (!this.lifting) this.family.update(delta);
+      this.hud.update();
+      return;
+    }
+
     if (this.lot.y > WORLD_H + 40) { this.killLot(true); return; }
     if (this.controls.restartPressed) {
-      if (this.finished) resetRun();
       this.restarting = true;
       this.scene.restart();
       return;
@@ -213,13 +268,11 @@ export default class TestScene extends Phaser.Scene {
     this.boost.update(delta);
     this.vents.forEach(v => v.update(delta));
 
-    if (!this.finished) {
-      this.destruction.update(delta, cam);
-      this.sulfur.update(delta, this.lot, cam);
-      this.family.applyDestruction(this.destruction.x);
-      if (this.lot.body.left < this.destruction.x) { this.killLot(true); return; }
-      if (this.lot.x > 140 * TILE) this.finish();
-    }
+    this.destruction.update(delta, cam);
+    this.sulfur.update(delta, this.lot, cam);
+    this.family.applyDestruction(this.destruction.x);
+    if (this.lot.body.left < this.destruction.x) { this.killLot(true); return; }
+    if (this.lot.x > 141 * TILE) this.startPickup();
 
     this.hud.update();
 

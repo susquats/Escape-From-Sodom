@@ -54,6 +54,14 @@ export default class Wife extends FamilyMember {
       .setOrigin(0.5, 1).setDepth(800);
   }
 
+  cancelLook() {
+    if (this.state === 'lookingBack') {
+      this.cleanupLook();
+      this.state = 'following';
+    }
+    this.lookTimer = Infinity;
+  }
+
   cleanupLook() {
     if (this.tremble) { this.tremble.stop(); this.tremble = null; }
     if (this.bang) { this.bang.destroy(); this.bang = null; }

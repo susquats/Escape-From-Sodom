@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { START_SCENE } from '../config.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -105,6 +106,6 @@ export default class BootScene extends Phaser.Scene {
     g.generateTexture('btn', 32, 32);
     g.destroy();
 
-    this.scene.start('TestScene');
+    this.scene.start(START_SCENE);
   }
 }

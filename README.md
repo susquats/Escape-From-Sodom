@@ -38,3 +38,11 @@ npm run preview   # serve the production build
 - **Halos** summon two angels for a few seconds: Lot runs faster, is protected from hazards and enemies (enemies get bonked; pits and the destruction wall still kill), salted family are rescued and everyone is briefly invulnerable. Grabbing another halo mid-boost extends it.
 - Debug (`?debug`): `5` triggers an angel boost; the debug line shows enemy count and boost timer.
 - Tuning: `SODOMITE` and `ANGEL` in `src/config.js`.
+
+## Milestone 5 — Leaving Sodom + Act II
+
+- Act I now ends at a fire chasm: crossing the gate (tx 141) starts the angel pickup. Family members still salted are lost; the rest are carried away.
+- Act II (`FlightScene`): flap with Space/Up/W or tap anywhere. Obstacles are scripted (`SCRIPT` in `src/scenes/FlightScene.js`). Crashing or falling restarts Act II, losses kept. The top of the screen is a soft ceiling.
+- The scene ends on a temporary "TO BE CONTINUED" card; R starts a fresh run.
+- Debug: `?scene=flight` starts in Act II; add `&debug` for hitbox, `I` toggles invincibility.
+- Tuning lives in `FLIGHT` in `src/config.js`.

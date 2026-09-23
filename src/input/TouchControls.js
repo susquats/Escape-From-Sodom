@@ -2,19 +2,21 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 
 export default class TouchControls {
-  constructor(scene) {
+  constructor(scene, names = ['left', 'right', 'jump', 'restart']) {
     this.scene = scene;
     this.left = false;
     this.right = false;
     this.jump = false;
     this.restart = false;
 
-    this.buttons = {
-      left: this.makeButton(8, GAME_HEIGHT - 8 - 40, 40, 40, '<'),
-      right: this.makeButton(56, GAME_HEIGHT - 8 - 40, 40, 40, '>'),
-      jump: this.makeButton(GAME_WIDTH - 8 - 48, GAME_HEIGHT - 8 - 48, 48, 48, 'JUMP'),
-      restart: this.makeButton(GAME_WIDTH - 24, 6, 18, 18, 'R'),
+    const defs = {
+      left: () => this.makeButton(8, GAME_HEIGHT - 8 - 40, 40, 40, '<'),
+      right: () => this.makeButton(56, GAME_HEIGHT - 8 - 40, 40, 40, '>'),
+      jump: () => this.makeButton(GAME_WIDTH - 8 - 48, GAME_HEIGHT - 8 - 48, 48, 48, 'JUMP'),
+      restart: () => this.makeButton(GAME_WIDTH - 24, 6, 18, 18, 'R'),
     };
+    this.buttons = {};
+    for (const n of names) if (defs[n]) this.buttons[n] = defs[n]();
 
     this.visible = false;
     if (scene.sys.game.device.input.touch) this.setVisible(true);

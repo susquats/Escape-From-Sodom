@@ -59,7 +59,6 @@ export const WIFE = {
   minWallDistance: 120,
 };
 
-export const DEBUG = new URLSearchParams(location.search).has('debug');
 
 export const SODOMITE = {
   speed: 45,            // px/s (Lot runs 110)
@@ -73,4 +72,19 @@ export const ANGEL = {
   runSpeed: 185,        // Lot's boosted max speed
   accelMultiplier: 1.6,
   swoopMs: 350,         // entry/exit flight time
+};
+
+const params = new URLSearchParams(location.search);
+export const DEBUG = params.has('debug');
+export const START_SCENE = params.get('scene') === 'flight' ? 'FlightScene' : 'SodomScene';
+
+export const FLIGHT = {
+  gravity: 700,
+  flapVelocity: 230,
+  maxFallSpeed: 320,
+  scrollSpeed: 95,      // px/s obstacles move left
+  carrierX: 90,         // fixed screen x of the group
+  hitbox: { w: 24, h: 32 },
+  gapSize: 80,          // vertical opening in "gate" obstacles
+  obstacleWidth: 24,
 };

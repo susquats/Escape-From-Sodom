@@ -3,11 +3,11 @@ import TouchControls from './TouchControls.js';
 
 // Merges keyboard + touch into one interface reused by later milestones.
 export default class Controls {
-  constructor(scene) {
+  constructor(scene, { touchButtons } = {}) {
     const kb = scene.input.keyboard;
     this.keys = kb.addKeys('LEFT,RIGHT,UP,SPACE,A,D,W,R');
     kb.addCapture('SPACE,UP,DOWN,LEFT,RIGHT');
-    this.touch = new TouchControls(scene);
+    this.touch = new TouchControls(scene, touchButtons);
 
     this.left = false;
     this.right = false;
