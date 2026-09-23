@@ -2,10 +2,13 @@ import Phaser from 'phaser';
 import './style.css';
 import { GAME_WIDTH, GAME_HEIGHT, MOVE, DEBUG } from './config.js';
 import BootScene from './scenes/BootScene.js';
+import TitleScene from './scenes/TitleScene.js';
 import SodomScene from './scenes/SodomScene.js';
 import FlightScene from './scenes/FlightScene.js';
 import WildernessScene from './scenes/WildernessScene.js';
 import MountainScene from './scenes/MountainScene.js';
+import EndingScene from './scenes/EndingScene.js';
+import CreditsScene from './scenes/CreditsScene.js';
 
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -20,6 +23,6 @@ const game = new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   input: { activePointers: 3 }, // multitouch
   physics: { default: 'arcade', arcade: { gravity: { y: MOVE.gravity }, debug: DEBUG } },
-  scene: [BootScene, SodomScene, FlightScene, WildernessScene, MountainScene],
+  scene: [BootScene, TitleScene, SodomScene, FlightScene, WildernessScene, MountainScene, EndingScene, CreditsScene],
 });
 if (DEBUG) window.game = game;

@@ -50,6 +50,30 @@ npm run preview   # serve the production build
 ## Milestone 6 — Wilderness + Act III
 
 - **Wilderness** (`WildernessScene`): quiet ~15 s walk right with the family, no hazards. Salt stomp works and the wife may still look back. Anyone still salted when Lot walks off the right edge is lost. R restarts the scene (losses persist).
-- **Act III** (`MountainScene`): Doodle-Jump climb. Lot bounces automatically; you only steer (← → / A D, or the split touch buttons: left bottom-left, right bottom-right). Jump does nothing. The camera only scrolls up; falling below the screen shows "AAAAH!" and restarts Act III with the identical layout (seeded). Moving platforms sweep sideways; crumbling platforms break when bounced on and return after 2.5 s. Reaching the top platform walks Lot into the cave, then a temporary "TO BE CONTINUED" card (R = fresh run).
+- **Act III** (`MountainScene`): Doodle-Jump climb. Lot bounces automatically; you only steer (← → / A D, or the split touch buttons: left bottom-left, right bottom-right). Jump does nothing. The camera only scrolls up; falling below the screen shows "AAAAH!" and restarts Act III with the identical layout (seeded). Moving platforms sweep sideways; crumbling platforms break when bounced on and return after 2.5 s. Reaching the top platform walks Lot into the cave, then fades to the ending.
 - Debug: `?scene=wilderness` / `?scene=mountain` (add `&debug`). In Act III `I` toggles invincibility (Lot is thrown back up when falling), `T` teleports near the top. Wilderness debug keys match Act I (`1`/`2`/`3` salt, `4` wife look-back).
 - Tuning: `MOUNTAIN` in `src/config.js`.
+
+## Milestone 7 — Cave ending, THE END, credits, title screen
+
+The game is now complete end-to-end:
+
+- **Title screen** (`TitleScene`): burning-city backdrop, Lot and family idle, Space/Enter/tap starts Act I.
+- **Ending** (`EndingScene`): after Lot enters the cave, surviving family members arrive. Wife does a look-back gag then enters; both daughters produce the **XXX jug**, wink at the camera, carry it in. Variants for 1 daughter (alone + shrug), 0 daughters (Lot peeks out). Instant cut to black → **THE END**.
+- **Credits** (`CreditsScene`): short comedic credits scroll (~15 s at normal speed; hold Space/Up/W or touch to scroll 4×). Final card shows family saved count and rating. Tap/click or Space returns to the title.
+- **Act I title card** now shows "ACT I / SODOM" (matching Acts II and III).
+- All "play again" paths now lead to the **title screen**; game-overs also land there.
+
+**Testing URLs:**
+
+| What to test | URL |
+|---|---|
+| Full game from start | `?scene=title` or just `/` |
+| Act I directly | `?scene=sodom` |
+| Ending, all alive | `?scene=ending` |
+| Ending, no wife | `?scene=ending&lost=wife` |
+| Ending, one daughter | `?scene=ending&lost=daughter2` |
+| Ending, Lot peek | `?scene=ending&lost=daughter1,daughter2` |
+| Credits (3/3 score) | `?scene=credits` |
+
+**Customise credits:** edit `MADE_BY` in `src/credits.js`.

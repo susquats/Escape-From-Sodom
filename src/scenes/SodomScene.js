@@ -104,16 +104,25 @@ export default class SodomScene extends Phaser.Scene {
     cam.setFollowOffset(-30, 0);
     cam.scrollY = WORLD_H; // clamped to bounds; avoids a camera pan at start
     cam.scrollX = 0;
+    cam.fadeIn(400);
 
     this.controls = new Controls(this);
     this.restarting = false;
 
+    const STROKE = { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 };
+    const actTitle = this.add.text(GAME_WIDTH / 2, 40, 'ACT I\nSODOM', { ...STROKE, fontSize: '12px' })
+      .setOrigin(0.5).setAlign('center').setScrollFactor(0).setDepth(900);
+    this.tweens.add({ targets: actTitle, alpha: 0, delay: 1500, duration: 600 });
+
     const touch = this.sys.game.device.input.touch;
-    const hint = this.add.text(GAME_WIDTH / 2, 10,
-      (touch ? 'Buttons to move & jump' : '← → move   SPACE jump   R restart') + '\nStomp Sodomites. Touch salt to rescue!',
-      { fontFamily: 'monospace', fontSize: '8px', color: '#fff' })
-      .setOrigin(0.5, 0).setScrollFactor(0).setDepth(900).setAlign('center');
-    this.tweens.add({ targets: hint, alpha: 0, delay: 4000, duration: 600 });
+    this.time.delayedCall(1800, () => {
+      const hint = this.add.text(GAME_WIDTH / 2, 10,
+        (touch ? 'Buttons to move & jump' : '← → move   SPACE jump   R restart') + '\nStomp Sodomites. Touch salt to rescue!',
+        { fontFamily: 'monospace', fontSize: '8px', color: '#fff' })
+        .setOrigin(0.5, 0).setScrollFactor(0).setDepth(900).setAlpha(0).setAlign('center');
+      this.tweens.add({ targets: hint, alpha: 1, duration: 400 });
+      this.tweens.add({ targets: hint, alpha: 0, delay: 3000, duration: 600 });
+    });
 
     if (DEBUG) {
       this.debugText = this.add.text(4, 20, '', { fontFamily: 'monospace', fontSize: '8px', color: '#0f0' })

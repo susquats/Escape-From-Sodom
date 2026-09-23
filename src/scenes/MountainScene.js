@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, DEBUG, MOVE, MOUNTAIN } from '../config.js';
 import Lot from '../objects/Lot.js';
 import Controls from '../input/Controls.js';
-import { resetRun, run } from '../runState.js';
+import { run } from '../runState.js';
 import { popText, puff, loseLife } from '../fx.js';
 
 const STROKE = { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 };
@@ -17,7 +17,6 @@ export default class MountainScene extends Phaser.Scene {
     const H = MOUNTAIN.height;
     this.dead = false;
     this.atTop = false;
-    this.showingCard = false;
     this.invincible = false;
     this.elapsed = 0;
     this.physics.world.setBounds(MOUNTAIN.columnLeft, 0, MOUNTAIN.columnRight - MOUNTAIN.columnLeft, H);
@@ -142,10 +141,9 @@ export default class MountainScene extends Phaser.Scene {
     this.tweens.add({ targets: lot, x: this.cave.x, duration: 900 });
     this.tweens.add({ targets: lot, y: lot.y - 1, duration: 110, yoyo: true, repeat: 3 });
     this.time.delayedCall(900, () => this.tweens.add({ targets: lot, alpha: 0, duration: 300 }));
-    this.time.delayedCall(1500, () => {
-      this.showingCard = true;
-      this.add.text(GAME_WIDTH / 2, 60, `TO BE CONTINUED...\nFamily: ${3 - run.lost.size}/3\nR to play again`, STROKE)
-        .setOrigin(0.5).setAlign('center').setScrollFactor(0).setDepth(900);
+    this.time.delayedCall(1700, () => {
+      this.cameras.main.fadeOut(500);
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('EndingScene'));
     });
   }
 
@@ -161,7 +159,7 @@ export default class MountainScene extends Phaser.Scene {
   update(time, delta) {
     this.controls.update();
     if (this.controls.restartPressed) {
-      if (this.showingCard) { resetRun(); this.scene.start('SodomScene'); } else this.scene.restart();
+      if (!this.atTop) this.scene.restart();
       return;
     }
     const cam = this.cameras.main, lot = this.lot;

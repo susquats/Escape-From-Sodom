@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { START_SCENE } from '../config.js';
+import { START_SCENE, START_LOST } from '../config.js';
+import { run } from '../runState.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -129,8 +130,46 @@ export default class BootScene extends Phaser.Scene {
     // Touch button base 32x32
     g.fillStyle(0xffffff).fillRect(2, 0, 28, 32).fillRect(0, 2, 32, 28);
     g.generateTexture('btn', 32, 32);
+    g.clear();
+
+    // Jug 16x18: clay jug with XXX on it
+    g.fillStyle(0x9a5a2a).fillRect(0, 6, 16, 12);   // body
+    g.fillStyle(0x9a5a2a).fillRect(5, 2, 6, 4);      // neck
+    g.fillStyle(0x6a3a1a).fillRect(13, 8, 2, 5);     // handle
+    g.fillStyle(0xd9b774).fillRect(6, 1, 4, 1);      // cork
+    g.fillStyle(0x000000);
+    // three 3x3 X patterns at (2,10), (6,10), (10,10)
+    [[2, 10], [6, 10], [10, 10]].forEach(([ox, oy]) => {
+      g.fillRect(ox, oy, 1, 1).fillRect(ox + 2, oy, 1, 1)
+        .fillRect(ox + 1, oy + 1, 1, 1)
+        .fillRect(ox, oy + 2, 1, 1).fillRect(ox + 2, oy + 2, 1, 1);
+    });
+    g.generateTexture('jug', 16, 18);
+    g.clear();
+
+    // Daughters front-facing 10x16
+    [['daughter1_front', 0x4c9a4c, 0x2a5a2a], ['daughter2_front', 0xd26a9a, 0x8a3a62]].forEach(([key, c, hair]) => {
+      g.fillStyle(c).fillRect(0, 0, 10, 16);
+      g.fillStyle(hair).fillRect(0, 0, 10, 4);
+      g.fillStyle(0x000000).fillRect(2, 6, 2, 2).fillRect(6, 6, 2, 2);
+      g.fillStyle(0x5a3520).fillRect(3, 10, 4, 1);
+      g.generateTexture(key, 10, 16);
+      g.clear();
+    });
+
+    // Daughters wink 10x16 (left eye closed)
+    [['daughter1_wink', 0x4c9a4c, 0x2a5a2a], ['daughter2_wink', 0xd26a9a, 0x8a3a62]].forEach(([key, c, hair]) => {
+      g.fillStyle(c).fillRect(0, 0, 10, 16);
+      g.fillStyle(hair).fillRect(0, 0, 10, 4);
+      g.fillStyle(0x000000).fillRect(2, 7, 2, 1).fillRect(6, 6, 2, 2);  // left eye closed
+      g.fillStyle(0x5a3520).fillRect(2, 10, 5, 1);  // smile 1px wider
+      g.generateTexture(key, 10, 16);
+      g.clear();
+    });
+
     g.destroy();
 
+    START_LOST.forEach(n => run.lost.add(n));
     this.scene.start(START_SCENE);
   }
 }

@@ -76,8 +76,10 @@ export const ANGEL = {
 
 const params = new URLSearchParams(location.search);
 export const DEBUG = params.has('debug');
-const SCENES = { flight: 'FlightScene', wilderness: 'WildernessScene', mountain: 'MountainScene' };
-export const START_SCENE = SCENES[params.get('scene')] || 'SodomScene';
+const SCENES = { title: 'TitleScene', sodom: 'SodomScene', flight: 'FlightScene', wilderness: 'WildernessScene',
+  mountain: 'MountainScene', ending: 'EndingScene', credits: 'CreditsScene' };
+export const START_SCENE = SCENES[params.get('scene')] || 'TitleScene';
+export const START_LOST = (params.get('lost') || '').split(',').filter(Boolean);
 
 export const FLIGHT = {
   gravity: 700,

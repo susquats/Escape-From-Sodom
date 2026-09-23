@@ -6,7 +6,7 @@ export function loseLife(scene) {
   const msg = gameOver ? 'GAME OVER\nThe family is gone. Starting over.' : `Lot fell. ${name.replace('daughter', 'Daughter ').replace('wife', 'Wife')} is lost.`;
   scene.add.text(160, 40, msg, { fontFamily: 'monospace', fontSize: '8px', color: gameOver ? '#ff5a5a' : '#ffe14a',
     stroke: '#000', strokeThickness: 2, align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(950);
-  return gameOver ? 'SodomScene' : scene.scene.key;
+  return gameOver ? 'TitleScene' : scene.scene.key;
 }
 
 export function popText(scene, x, y, str, color = '#fff') {
