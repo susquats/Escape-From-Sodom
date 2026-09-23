@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, TILE, DEBUG } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, TILE, DEBUG, MOVE, FAMILY } from '../config.js';
 import Lot from '../objects/Lot.js';
 import Controls from '../input/Controls.js';
+import Trail from '../objects/Trail.js';
+import Family from '../objects/Family.js';
+import FireVent from '../objects/FireVent.js';
 
 const WORLD_W = 2400;
 const WORLD_H = 360;
@@ -20,8 +23,29 @@ export default class TestScene extends Phaser.Scene {
     this.terrain = this.physics.add.staticGroup();
     this.buildLevel();
 
-    this.lot = new Lot(this, 48, STREET * TILE - 20);
+    this.lot = new Lot(this, 48, STREET * TILE - 10);
     this.physics.add.collider(this.lot, this.terrain);
+
+    this.trail = new Trail(this.lot.x, STREET * TILE, FAMILY.trailMaxLength);
+    this.family = new Family(this, this.trail, this.terrain);
+
+    const vx = (tx) => tx * TILE + TILE / 2;
+    this.vents = [
+      new FireVent(this, vx(10), STREET * TILE, 0),
+      new FireVent(this, vx(24), (STREET - 3) * TILE, 700),
+      new FireVent(this, vx(95), STREET * TILE, 0),
+      new FireVent(this, vx(100), STREET * TILE, 1200),
+    ];
+    this.physics.add.overlap(this.lot, this.vents, (lot, v) => { if (v.isHot) this.killLot(); });
+    this.physics.add.overlap(this.family.members, this.vents, (m, v) => { if (v.isHot) m.saltify(); });
+    this.physics.add.overlap(this.lot, this.family.saltGroup, (lot, salt) => {
+      const lb = lot.body;
+      const prevBottom = lb.prev.y + lb.height;
+      if (lb.velocity.y > 0 && prevBottom <= salt.body.top + 4) {
+        lb.setVelocityY(-MOVE.stompBounce);
+        salt.member.rescue();
+      }
+    });
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, WORLD_W, WORLD_H);
@@ -36,15 +60,26 @@ export default class TestScene extends Phaser.Scene {
 
     const touch = this.sys.game.device.input.touch;
     const hint = this.add.text(GAME_WIDTH / 2, 10,
-      touch ? 'Buttons to move & jump' : '← → move   SPACE jump   R restart',
+      (touch ? 'Buttons to move & jump' : '← → move   SPACE jump   R restart') + '\nJump on salt to rescue!',
       { fontFamily: 'monospace', fontSize: '8px', color: '#fff' })
-      .setOrigin(0.5, 0).setScrollFactor(0).setDepth(900);
+      .setOrigin(0.5, 0).setScrollFactor(0).setDepth(900).setAlign('center');
     this.tweens.add({ targets: hint, alpha: 0, delay: 4000, duration: 600 });
 
     if (DEBUG) {
       this.debugText = this.add.text(4, 4, '', { fontFamily: 'monospace', fontSize: '8px', color: '#0f0' })
         .setScrollFactor(0).setDepth(900);
+      const K = Phaser.Input.Keyboard.KeyCodes;
+      this.debugKeys = ['ONE', 'TWO', 'THREE'].map(k => this.input.keyboard.addKey(K[k]));
     }
+  }
+
+  killLot() {
+    if (this.restarting) return;
+    this.restarting = true;
+    this.physics.pause();
+    this.lot.setTint(0xff4040);
+    this.cameras.main.shake(200, 0.01);
+    this.time.delayedCall(600, () => this.scene.restart());
   }
 
   buildBackground() {
@@ -96,11 +131,18 @@ export default class TestScene extends Phaser.Scene {
     }
 
     this.lot.update(this.controls, delta);
+    this.trail.record(this.lot.x, this.lot.body.bottom, this.lot.facing);
+    this.family.update(delta);
+    this.vents.forEach(v => v.update(delta));
 
     if (this.debugText) {
+      this.debugKeys.forEach((k, i) => {
+        if (Phaser.Input.Keyboard.JustDown(k)) this.family.members[i].saltify();
+      });
       const b = this.lot.body;
       this.debugText.setText(
-        `vx ${b.velocity.x.toFixed(0)} vy ${b.velocity.y.toFixed(0)} onGround ${this.lot.onGround}`);
+        `vx ${b.velocity.x.toFixed(0)} vy ${b.velocity.y.toFixed(0)} onGround ${this.lot.onGround}\n` +
+        this.family.members.map(m => `${m.memberName}:${m.state}`).join(' '));
     }
   }
 }

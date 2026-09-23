@@ -21,6 +21,40 @@ export default class BootScene extends Phaser.Scene {
     g.generateTexture('ground', 16, 16);
     g.clear();
 
+    // Wife 11x19
+    g.fillStyle(0x3b6fb6).fillRect(0, 0, 11, 19);
+    g.fillStyle(0x9ec3e6).fillRect(0, 0, 11, 5);
+    g.fillStyle(0x000000).fillRect(8, 7, 2, 2);
+    g.generateTexture('wife', 11, 19);
+    g.clear();
+
+    // Daughters 10x16
+    [['daughter1', 0x4c9a4c, 0x2a5a2a], ['daughter2', 0xd26a9a, 0x8a3a62]].forEach(([key, c, hair]) => {
+      g.fillStyle(c).fillRect(0, 0, 10, 16);
+      g.fillStyle(hair).fillRect(0, 0, 10, 4);
+      g.fillStyle(0x000000).fillRect(7, 6, 2, 2);
+      g.generateTexture(key, 10, 16);
+      g.clear();
+    });
+
+    // Salt shaker 8x12
+    g.fillStyle(0xf4f4f4).fillRect(0, 0, 8, 12);
+    g.fillStyle(0x9a9a9a).fillRect(0, 0, 8, 3);
+    g.fillStyle(0x000000).fillRect(1, 1, 1, 1).fillRect(3, 1, 1, 1).fillRect(6, 1, 1, 1);
+    g.generateTexture('salt', 8, 12);
+    g.clear();
+
+    // Fire vent 12x32
+    g.fillStyle(0xff8a1e).fillRect(0, 0, 12, 32);
+    g.fillStyle(0xffe14a).fillRect(3, 12, 6, 20);
+    g.generateTexture('vent', 12, 32);
+    g.clear();
+
+    // Puff pixel 2x2
+    g.fillStyle(0xffffff).fillRect(0, 0, 2, 2);
+    g.generateTexture('pixel', 2, 2);
+    g.clear();
+
     // Touch button base 32x32
     g.fillStyle(0xffffff).fillRect(2, 0, 28, 32).fillRect(0, 2, 32, 28);
     g.generateTexture('btn', 32, 32);

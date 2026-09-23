@@ -15,6 +15,21 @@ export const MOVE = {
   maxFallSpeed: 420,
   coyoteTimeMs: 90,        // can still jump shortly after walking off a ledge
   jumpBufferMs: 110,       // jump pressed shortly before landing still counts
+  stompBounce: 230,        // Lot's bounce off salt
+};
+
+export const FAMILY = {
+  spacing: { wife: 18, daughter1: 34, daughter2: 50 }, // path px behind Lot
+  trailMaxLength: 400,   // px of path history kept (must exceed largest spacing + margin)
+  rejoinSpeed: 260,      // px/s while flying back to slot after rescue
+  invulnMs: 1000,        // blinking protection after rejoining
+  saltGravity: 900,
+};
+
+export const VENT = {
+  offMs: 1400,
+  warnMs: 500,           // flicker before erupting
+  onMs: 1100,
 };
 
 export const DEBUG = new URLSearchParams(location.search).has('debug');
