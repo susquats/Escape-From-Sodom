@@ -3,7 +3,6 @@ import { GAME_WIDTH, GAME_HEIGHT, DEBUG, FLIGHT } from '../config.js';
 import Carrier from '../objects/Carrier.js';
 import Controls from '../input/Controls.js';
 import { popText, puff } from '../fx.js';
-import { run, resetRun } from '../runState.js';
 
 // Seconds after the first flap; obstacles spawn at x = GAME_WIDTH + 20.
 const SCRIPT = [
@@ -32,7 +31,6 @@ export default class FlightScene extends Phaser.Scene {
     this.scriptIndex = 0;
     this.dead = false;
     this.landing = false;
-    this.done = false;
     this.tapQueued = false;
     this.scrollMul = 1;
     this.invincible = false;
@@ -137,7 +135,7 @@ export default class FlightScene extends Phaser.Scene {
     this.tapQueued = false;
 
     if (this.controls.restartPressed) {
-      if (this.done) { resetRun(); this.scene.start('SodomScene'); } else if (!this.dead) this.scene.restart();
+      if (!this.dead) this.scene.restart();
       return;
     }
 
@@ -205,9 +203,9 @@ export default class FlightScene extends Phaser.Scene {
       this.tweens.add({ targets: people, angle: 0, duration: 150 });
     });
     this.time.delayedCall(2150, () => {
-      this.done = true;
-      this.add.text(GAME_WIDTH / 2, 60, `TO BE CONTINUED...\nFamily: ${3 - run.lost.size}/3\nR to play again`, STROKE)
-        .setOrigin(0.5).setAlign('center').setDepth(900);
+      const cam = this.cameras.main;
+      cam.fadeOut(500);
+      cam.once('camerafadeoutcomplete', () => this.scene.start('WildernessScene'));
     });
   }
 }

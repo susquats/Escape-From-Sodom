@@ -9,9 +9,11 @@ export default class TouchControls {
     this.jump = false;
     this.restart = false;
 
+    // No jump button: split the thumbs, right button goes to the bottom-right corner
+    const rightX = names.includes('right') && !names.includes('jump') ? GAME_WIDTH - 8 - 40 : 56;
     const defs = {
       left: () => this.makeButton(8, GAME_HEIGHT - 8 - 40, 40, 40, '<'),
-      right: () => this.makeButton(56, GAME_HEIGHT - 8 - 40, 40, 40, '>'),
+      right: () => this.makeButton(rightX, GAME_HEIGHT - 8 - 40, 40, 40, '>'),
       jump: () => this.makeButton(GAME_WIDTH - 8 - 48, GAME_HEIGHT - 8 - 48, 48, 48, 'JUMP'),
       restart: () => this.makeButton(GAME_WIDTH - 24, 6, 18, 18, 'R'),
     };

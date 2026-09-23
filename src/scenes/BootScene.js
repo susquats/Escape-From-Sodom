@@ -101,6 +101,31 @@ export default class BootScene extends Phaser.Scene {
     g.generateTexture('pixel', 2, 2);
     g.clear();
 
+    // Ledge 16x6 (tileSprite for any width)
+    g.fillStyle(0x7a5a3a).fillRect(0, 0, 16, 6);
+    g.fillStyle(0xb08a5a).fillRect(0, 0, 16, 1);
+    g.generateTexture('ledge', 16, 6);
+    g.clear();
+
+    // Crumbling ledge 16x6
+    g.fillStyle(0x8a7a6a).fillRect(0, 0, 16, 6);
+    g.fillStyle(0xb0a090).fillRect(0, 0, 16, 1);
+    g.fillStyle(0x3a2e26).fillRect(4, 1, 1, 3).fillRect(5, 3, 1, 3).fillRect(11, 1, 1, 2).fillRect(10, 3, 1, 3);
+    g.generateTexture('ledge_crumble', 16, 6);
+    g.clear();
+
+    // Cave mouth 28x26 (stepped arch)
+    g.fillStyle(0x140c10).fillRect(0, 8, 28, 18).fillRect(4, 4, 20, 8).fillRect(8, 0, 12, 4);
+    g.generateTexture('cave', 28, 26);
+    g.clear();
+
+    // Rock 14x10
+    g.fillStyle(0x6a5646).fillRect(0, 4, 14, 6).fillRect(2, 1, 10, 4).fillRect(5, 0, 5, 2);
+    g.fillStyle(0x8a7462).fillRect(3, 2, 4, 2);
+    g.fillStyle(0x4a3a2e).fillRect(0, 9, 14, 1);
+    g.generateTexture('rock', 14, 10);
+    g.clear();
+
     // Touch button base 32x32
     g.fillStyle(0xffffff).fillRect(2, 0, 28, 32).fillRect(0, 2, 32, 28);
     g.generateTexture('btn', 32, 32);

@@ -76,7 +76,8 @@ export const ANGEL = {
 
 const params = new URLSearchParams(location.search);
 export const DEBUG = params.has('debug');
-export const START_SCENE = params.get('scene') === 'flight' ? 'FlightScene' : 'SodomScene';
+const SCENES = { flight: 'FlightScene', wilderness: 'WildernessScene', mountain: 'MountainScene' };
+export const START_SCENE = SCENES[params.get('scene')] || 'SodomScene';
 
 export const FLIGHT = {
   gravity: 700,
@@ -87,4 +88,25 @@ export const FLIGHT = {
   hitbox: { w: 24, h: 32 },
   gapSize: 80,          // vertical opening in "gate" obstacles
   obstacleWidth: 24,
+};
+
+export const MOUNTAIN = {
+  height: 2200,          // world height; tune so the climb takes 45–60 s
+  bounceVelocity: 330,   // auto-bounce (~60 px apex with gravity 900)
+  columnLeft: 56,
+  columnRight: 264,
+  stepMin: 38,           // vertical distance between platforms (must stay < ~55)
+  stepMax: 52,
+  maxDx: 110,            // max horizontal offset from the previous platform
+  widthStart: 48,
+  widthEnd: 28,
+  movingFrom: 0.4,       // fraction of the climb after which moving platforms can appear
+  movingChance: 0.25,
+  movingRange: 40,       // px each side
+  movingMs: 1600,
+  crumbleFrom: 0.55,
+  crumbleChance: 0.2,
+  crumbleRespawnMs: 2500,
+  cameraLead: 110,       // Lot's screen y when the camera is pushing up
+  topY: 70,              // y of the final platform
 };

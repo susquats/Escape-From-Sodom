@@ -37,8 +37,9 @@ export default class Wife extends FamilyMember {
     if (this.state === 'following' && this.invulnTimer <= 0) {
       this.lookTimer -= delta;
       if (this.lookTimer <= 0) {
+        const wallX = this.scene.destruction ? this.scene.destruction.x : -Infinity;
         const ok = this.trail.sample(this.spacing).onGround &&
-          this.scene.destruction.x < this.x - WIFE.minWallDistance;
+          wallX < this.x - WIFE.minWallDistance;
         if (ok) this.startLook();
         else this.lookTimer = 500;
       }
