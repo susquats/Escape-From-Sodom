@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, DEBUG, FLIGHT } from '../config.js';
 import Carrier from '../objects/Carrier.js';
 import Controls from '../input/Controls.js';
-import { popText, puff } from '../fx.js';
+import { popText, puff, loseLife } from '../fx.js';
 
 // Seconds after the first flap; obstacles spawn at x = GAME_WIDTH + 20.
 const SCRIPT = [
@@ -116,7 +116,8 @@ export default class FlightScene extends Phaser.Scene {
     cam.shake(200, 0.01);
     cam.flash(100, 255, 80, 40);
     this.carrier.crash();
-    this.time.delayedCall(900, () => this.scene.restart());
+    const next = loseLife(this);
+    this.time.delayedCall(900, () => this.scene.start(next));
   }
 
   scrollBackground(delta) {

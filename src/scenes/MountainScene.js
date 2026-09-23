@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, DEBUG, MOVE, MOUNTAIN } from '../config.js';
 import Lot from '../objects/Lot.js';
 import Controls from '../input/Controls.js';
 import { resetRun, run } from '../runState.js';
-import { popText, puff } from '../fx.js';
+import { popText, puff, loseLife } from '../fx.js';
 
 const STROKE = { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 };
 
@@ -95,17 +95,21 @@ export default class MountainScene extends Phaser.Scene {
     const M = MOUNTAIN;
     const rnd = new Phaser.Math.RandomDataGenerator(['lot-climbs']);
     this.makePlatform(160, H - 8, 208, 'normal');
-    let y = H - 8, prevX = 160, prevCrumble = false;
-    while (y - M.stepMax > M.topY + 20) {
-      y -= rnd.between(M.stepMin, M.stepMax);
+    let y = H - 8, prevX = 160, prevCrumble = false, prevMoving = false;
+    while (y - M.topY > M.stepMax) {
+      // never leave the last gap to the top platform above stepMax or below stepMin
+      y -= Math.min(rnd.between(M.stepMin, M.stepMax), y - M.topY - M.stepMin);
       const progress = 1 - y / H;
       const w = Math.round(Phaser.Math.Linear(M.widthStart, M.widthEnd, progress));
-      const minX = M.columnLeft + w / 2, maxX = M.columnRight - w / 2;
-      const x = Phaser.Math.Clamp(prevX + rnd.between(-M.maxDx, M.maxDx), minX, maxX);
       let type = 'normal';
       if (progress > M.movingFrom && rnd.frac() < M.movingChance) type = 'moving';
       else if (!prevCrumble && progress > M.crumbleFrom && rnd.frac() < M.crumbleChance) type = 'crumble';
+      // a moving platform sweeps +-movingRange, so keep hops to/from it short
+      const dxMax = type === 'moving' || prevMoving ? M.maxDx - M.movingRange : M.maxDx;
+      const minX = M.columnLeft + w / 2, maxX = M.columnRight - w / 2;
+      const x = Phaser.Math.Clamp(prevX + rnd.between(-dxMax, dxMax), minX, maxX);
       this.makePlatform(x, y, w, type);
+      prevMoving = type === 'moving';
       prevCrumble = type === 'crumble';
       prevX = x;
     }
@@ -150,7 +154,8 @@ export default class MountainScene extends Phaser.Scene {
     const cam = this.cameras.main;
     popText(this, this.lot.x, cam.scrollY + GAME_HEIGHT - 10, 'AAAAH!');
     cam.shake(200, 0.01);
-    this.time.delayedCall(700, () => this.scene.restart());
+    const next = loseLife(this);
+    this.time.delayedCall(700, () => this.scene.start(next));
   }
 
   update(time, delta) {

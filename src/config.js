@@ -91,13 +91,13 @@ export const FLIGHT = {
 };
 
 export const MOUNTAIN = {
-  height: 2200,          // world height; tune so the climb takes 45–60 s
+  height: 4000,          // world height; a perfect climb is ~82 px/s, so ~50 s
   bounceVelocity: 330,   // auto-bounce (~60 px apex with gravity 900)
   columnLeft: 56,
   columnRight: 264,
   stepMin: 38,           // vertical distance between platforms (must stay < ~55)
   stepMax: 52,
-  maxDx: 110,            // max horizontal offset from the previous platform
+  maxDx: 70,             // max horizontal offset from the previous platform (a bounce only gives ~50 px of air travel)
   widthStart: 48,
   widthEnd: 28,
   movingFrom: 0.4,       // fraction of the climb after which moving platforms can appear

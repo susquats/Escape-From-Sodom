@@ -20,6 +20,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     this.state = 'following';
     this.invulnTimer = 0;
     this.salt = null;
+    this.saltedAt = 0;
 
     const p = trail.sample(spacing);
     this.setPosition(p.x, p.y);
@@ -84,6 +85,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     if (this.state === 'salted' || this.state === 'lost') return;
     if (!force && !this.canBeHit) return;
     this.state = 'salted';
+    this.saltedAt = this.scene.time.now;
     this.setVisible(false);
     this.body.enable = false;
     this.setAlpha(1);

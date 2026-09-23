@@ -12,7 +12,7 @@ import Halo from '../objects/Halo.js';
 import AngelBoost from '../objects/AngelBoost.js';
 import FamilyHud from '../ui/FamilyHud.js';
 import { resetRun } from '../runState.js';
-import { popText } from '../fx.js';
+import { popText, loseLife } from '../fx.js';
 
 const WORLD_W = 2400;
 const WORLD_H = 360;
@@ -56,10 +56,7 @@ export default class SodomScene extends Phaser.Scene {
     this.addHazard(this.sulfur.flames);
     this.addHazard(this.sulfur.balls, () => true, h => h.destroy());
     this.physics.add.overlap(this.lot, this.family.saltGroup, (lot, salt) => {
-      if (lot.isStomping(salt.body)) {
-        lot.body.setVelocityY(-MOVE.stompBounce);
-        salt.member.rescue();
-      }
+      if (this.time.now - salt.member.saltedAt > 350) salt.member.rescue(); // touch is enough
     });
 
     const ex = (tx) => tx * TILE + TILE / 2;
@@ -80,6 +77,14 @@ export default class SodomScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.family.members, this.enemies, (m, e) => { if (e.alive && e.awake) m.saltify(); });
     this.physics.add.overlap(this.sulfur.balls, this.enemies, (ball, e) => { if (e.alive) { e.burn(); ball.destroy(); } });
+
+    // the way out: a halo by the wall calls the angels
+    this.gateHalo = new Halo(this, ex(138), STREET * TILE - 14).setScale(1.5);
+    this.physics.add.overlap(this.lot, this.gateHalo, (lot, h) => {
+      if (!h.active || this.cutscene) return;
+      h.collect();
+      this.startPickup();
+    });
 
     this.boost = new AngelBoost(this, this.lot, this.family);
     this.halos = [
@@ -105,7 +110,7 @@ export default class SodomScene extends Phaser.Scene {
 
     const touch = this.sys.game.device.input.touch;
     const hint = this.add.text(GAME_WIDTH / 2, 10,
-      (touch ? 'Buttons to move & jump' : '← → move   SPACE jump   R restart') + '\nStomp Sodomites. Stomp salt to rescue!',
+      (touch ? 'Buttons to move & jump' : '← → move   SPACE jump   R restart') + '\nStomp Sodomites. Touch salt to rescue!',
       { fontFamily: 'monospace', fontSize: '8px', color: '#fff' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(900).setAlign('center');
     this.tweens.add({ targets: hint, alpha: 0, delay: 4000, duration: 600 });
@@ -147,7 +152,8 @@ export default class SodomScene extends Phaser.Scene {
     this.tweens.add({ targets: lot, y: lot.y - 24, duration: 150, ease: 'Quad.out', onComplete: () => {
       this.tweens.add({ targets: lot, y: lot.y + 200, angle: 360, duration: 550, ease: 'Quad.in' });
     } });
-    this.time.delayedCall(800, () => this.scene.restart());
+    const next = loseLife(this);
+    this.time.delayedCall(800, () => this.scene.start(next));
   }
 
   startPickup() {
@@ -272,7 +278,6 @@ export default class SodomScene extends Phaser.Scene {
     this.sulfur.update(delta, this.lot, cam);
     this.family.applyDestruction(this.destruction.x);
     if (this.lot.body.left < this.destruction.x) { this.killLot(true); return; }
-    if (this.lot.x > 141 * TILE) this.startPickup();
 
     this.hud.update();
 

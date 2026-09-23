@@ -31,10 +31,7 @@ export default class WildernessScene extends Phaser.Scene {
     this.family = new Family(this, this.trail, this.terrain);
     this.hud = new FamilyHud(this, this.family);
     this.physics.add.overlap(this.lot, this.family.saltGroup, (lot, salt) => {
-      if (lot.isStomping(salt.body)) {
-        lot.body.setVelocityY(-MOVE.stompBounce);
-        salt.member.rescue();
-      }
+      if (this.time.now - salt.member.saltedAt > 350) salt.member.rescue();
     });
 
     const cam = this.cameras.main;

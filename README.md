@@ -43,6 +43,13 @@ npm run preview   # serve the production build
 
 - Act I now ends at a fire chasm: crossing the gate (tx 141) starts the angel pickup. Family members still salted are lost; the rest are carried away.
 - Act II (`FlightScene`): flap with Space/Up/W or tap anywhere. Obstacles are scripted (`SCRIPT` in `src/scenes/FlightScene.js`). Crashing or falling restarts Act II, losses kept. The top of the screen is a soft ceiling.
-- The scene ends on a temporary "TO BE CONTINUED" card; R starts a fresh run.
+- After the landing the scene fades into the wilderness (Milestone 6).
 - Debug: `?scene=flight` starts in Act II; add `&debug` for hitbox, `I` toggles invincibility.
 - Tuning lives in `FLIGHT` in `src/config.js`.
+
+## Milestone 6 — Wilderness + Act III
+
+- **Wilderness** (`WildernessScene`): quiet ~15 s walk right with the family, no hazards. Salt stomp works and the wife may still look back. Anyone still salted when Lot walks off the right edge is lost. R restarts the scene (losses persist).
+- **Act III** (`MountainScene`): Doodle-Jump climb. Lot bounces automatically; you only steer (← → / A D, or the split touch buttons: left bottom-left, right bottom-right). Jump does nothing. The camera only scrolls up; falling below the screen shows "AAAAH!" and restarts Act III with the identical layout (seeded). Moving platforms sweep sideways; crumbling platforms break when bounced on and return after 2.5 s. Reaching the top platform walks Lot into the cave, then a temporary "TO BE CONTINUED" card (R = fresh run).
+- Debug: `?scene=wilderness` / `?scene=mountain` (add `&debug`). In Act III `I` toggles invincibility (Lot is thrown back up when falling), `T` teleports near the top. Wilderness debug keys match Act I (`1`/`2`/`3` salt, `4` wife look-back).
+- Tuning: `MOUNTAIN` in `src/config.js`.
