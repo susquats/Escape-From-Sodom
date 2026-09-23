@@ -6,7 +6,7 @@ import TestScene from './scenes/TestScene.js';
 
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   width: GAME_WIDTH,
@@ -19,3 +19,4 @@ new Phaser.Game({
   physics: { default: 'arcade', arcade: { gravity: { y: MOVE.gravity }, debug: DEBUG } },
   scene: [BootScene, TestScene],
 });
+if (DEBUG) window.game = game;

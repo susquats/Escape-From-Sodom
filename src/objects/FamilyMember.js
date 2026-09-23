@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FAMILY } from '../config.js';
 import { popText, puff } from '../fx.js';
+import { run } from '../runState.js';
 
 export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, key, spacing, trail, saltGroup) {
@@ -25,7 +26,17 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
   }
 
   get canBeHit() {
-    return this.state === 'following' && this.invulnTimer <= 0;
+    return (this.state === 'following' || this.state === 'lookingBack') && this.invulnTimer <= 0;
+  }
+
+  get worldX() {
+    return this.salt ? this.salt.x : this.x;
+  }
+
+  startLost() { // retry: already lost earlier in this run, no popup
+    this.state = 'lost';
+    this.setVisible(false);
+    this.body.enable = false;
   }
 
   blink(delta) {
@@ -69,8 +80,9 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  saltify() {
-    if (!this.canBeHit) return;
+  saltify(force = false) {
+    if (this.state === 'salted' || this.state === 'lost') return;
+    if (!force && !this.canBeHit) return;
     this.state = 'salted';
     this.setVisible(false);
     this.body.enable = false;
@@ -106,6 +118,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
       this.salt = null;
     }
     this.state = 'lost';
+    run.lost.add(this.memberName);
     this.setVisible(false);
     this.body.enable = false;
     popText(this.scene, x, y, 'LOST!', '#ff5a5a');

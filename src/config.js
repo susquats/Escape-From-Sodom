@@ -32,4 +32,31 @@ export const VENT = {
   onMs: 1100,
 };
 
+export const DESTRUCTION = {
+  startX: -80,          // world x of the kill line at start
+  startDelayMs: 2500,   // grace period before it moves
+  speed: 34,            // px/s (Lot runs 110)
+  maxLag: 70,           // never more than this many px left of the camera's left edge
+  warnRange: 160,       // edge warning starts when wall is this close to camera left
+};
+
+export const SULFUR = {
+  startIntervalMs: 2400, // at level start
+  endIntervalMs: 900,    // near the city gate
+  warnMs: 700,           // marker time before the drop
+  fallSpeed: 150,
+  maxDrift: 15,          // random horizontal px/s
+  aheadMin: -40,         // target x = lot.x + random(aheadMin, aheadMax)
+  aheadMax: 170,
+  flameMs: 1600,         // ground flame lifetime
+};
+
+export const WIFE = {
+  lookIntervalMinMs: 9000,
+  lookIntervalMaxMs: 16000,
+  noticeMs: 600,         // stopped with "!"
+  turnMs: 900,           // facing the destruction, trembling
+  minWallDistance: 120,
+};
+
 export const DEBUG = new URLSearchParams(location.search).has('debug');

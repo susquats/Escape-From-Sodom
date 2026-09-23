@@ -50,6 +50,30 @@ export default class BootScene extends Phaser.Scene {
     g.generateTexture('vent', 12, 32);
     g.clear();
 
+    // Fireball 8x8
+    g.fillStyle(0xff8a1e).fillRect(2, 0, 4, 8).fillRect(0, 2, 8, 4);
+    g.fillStyle(0xffe14a).fillRect(3, 3, 2, 2);
+    g.generateTexture('fireball', 8, 8);
+    g.clear();
+
+    // Ground flame 10x10
+    g.fillStyle(0xff8a1e).fillRect(0, 4, 10, 6).fillRect(2, 1, 6, 4).fillRect(4, 0, 2, 2);
+    g.fillStyle(0xffe14a).fillRect(3, 5, 4, 5);
+    g.generateTexture('flame', 10, 10);
+    g.clear();
+
+    // Sulfur warning marker 5x5
+    g.fillStyle(0xff2020).fillRect(0, 0, 5, 5);
+    g.fillStyle(0xffe14a).fillRect(2, 2, 1, 1);
+    g.generateTexture('warn', 5, 5);
+    g.clear();
+
+    // HUD X 7x7
+    g.fillStyle(0xff2020);
+    for (let i = 0; i < 7; i++) g.fillRect(i, i, 1, 1).fillRect(6 - i, i, 1, 1);
+    g.generateTexture('x', 7, 7);
+    g.clear();
+
     // Puff pixel 2x2
     g.fillStyle(0xffffff).fillRect(0, 0, 2, 2);
     g.generateTexture('pixel', 2, 2);

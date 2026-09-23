@@ -5,6 +5,10 @@ import Controls from '../input/Controls.js';
 import Trail from '../objects/Trail.js';
 import Family from '../objects/Family.js';
 import FireVent from '../objects/FireVent.js';
+import Destruction from '../objects/Destruction.js';
+import Sulfur from '../objects/Sulfur.js';
+import FamilyHud from '../ui/FamilyHud.js';
+import { resetRun } from '../runState.js';
 
 const WORLD_W = 2400;
 const WORLD_H = 360;
@@ -36,8 +40,14 @@ export default class TestScene extends Phaser.Scene {
       new FireVent(this, vx(95), STREET * TILE, 0),
       new FireVent(this, vx(100), STREET * TILE, 1200),
     ];
-    this.physics.add.overlap(this.lot, this.vents, (lot, v) => { if (v.isHot) this.killLot(); });
-    this.physics.add.overlap(this.family.members, this.vents, (m, v) => { if (v.isHot) m.saltify(); });
+    this.destruction = new Destruction(this, WORLD_H);
+    this.sulfur = new Sulfur(this, this.terrain, WORLD_W, WORLD_H);
+    this.hud = new FamilyHud(this, this.family);
+    this.finished = false;
+
+    this.addHazard(this.vents, v => v.isHot);
+    this.addHazard(this.sulfur.flames);
+    this.addHazard(this.sulfur.balls, () => true, h => h.destroy());
     this.physics.add.overlap(this.lot, this.family.saltGroup, (lot, salt) => {
       const lb = lot.body;
       const prevBottom = lb.prev.y + lb.height;
@@ -66,20 +76,50 @@ export default class TestScene extends Phaser.Scene {
     this.tweens.add({ targets: hint, alpha: 0, delay: 4000, duration: 600 });
 
     if (DEBUG) {
-      this.debugText = this.add.text(4, 4, '', { fontFamily: 'monospace', fontSize: '8px', color: '#0f0' })
+      this.debugText = this.add.text(4, 20, '', { fontFamily: 'monospace', fontSize: '8px', color: '#0f0' })
         .setScrollFactor(0).setDepth(900);
       const K = Phaser.Input.Keyboard.KeyCodes;
       this.debugKeys = ['ONE', 'TWO', 'THREE'].map(k => this.input.keyboard.addKey(K[k]));
+      this.keyZero = this.input.keyboard.addKey(K.ZERO);
+      this.keyFour = this.input.keyboard.addKey(K.FOUR);
     }
+  }
+
+  addHazard(target, isActive = () => true, onHit = null) {
+    this.physics.add.overlap(this.lot, target, (lot, h) => {
+      if (!isActive(h)) return;
+      this.killLot();
+      if (onHit) onHit(h);
+    });
+    this.physics.add.overlap(this.family.members, target, (m, h) => {
+      if (!isActive(h) || !h.active) return;
+      const before = m.state;
+      m.saltify();
+      if (onHit && m.state !== before) onHit(h);
+    });
   }
 
   killLot() {
     if (this.restarting) return;
     this.restarting = true;
     this.physics.pause();
-    this.lot.setTint(0xff4040);
+    const lot = this.lot;
+    lot.setTint(0xff4040);
     this.cameras.main.shake(200, 0.01);
-    this.time.delayedCall(600, () => this.scene.restart());
+    this.tweens.add({ targets: lot, y: lot.y - 24, duration: 150, ease: 'Quad.out', onComplete: () => {
+      this.tweens.add({ targets: lot, y: lot.y + 200, angle: 360, duration: 550, ease: 'Quad.in' });
+    } });
+    this.time.delayedCall(800, () => this.scene.restart());
+  }
+
+  finish() {
+    this.finished = true;
+    this.destruction.stopped = true;
+    this.sulfur.stop();
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      `SAFE!\nFamily: ${this.family.savedCount}/3\nR to play again`,
+      { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 })
+      .setOrigin(0.5).setAlign('center').setScrollFactor(0).setDepth(900);
   }
 
   buildBackground() {
@@ -124,24 +164,39 @@ export default class TestScene extends Phaser.Scene {
     this.controls.update();
     if (this.restarting) return;
 
-    if (this.controls.restartPressed || this.lot.y > WORLD_H + 40) {
+    if (this.lot.y > WORLD_H + 40) { this.killLot(); return; }
+    if (this.controls.restartPressed) {
+      if (this.finished) resetRun();
       this.restarting = true;
       this.scene.restart();
       return;
     }
 
+    const cam = this.cameras.main;
     this.lot.update(this.controls, delta);
-    this.trail.record(this.lot.x, this.lot.body.bottom, this.lot.facing);
+    this.trail.record(this.lot.x, this.lot.body.bottom, this.lot.facing, this.lot.onGround);
     this.family.update(delta);
     this.vents.forEach(v => v.update(delta));
 
+    if (!this.finished) {
+      this.destruction.update(delta, cam);
+      this.sulfur.update(delta, this.lot, cam);
+      this.family.applyDestruction(this.destruction.x);
+      if (this.lot.body.left < this.destruction.x) { this.killLot(); return; }
+      if (this.lot.x > 140 * TILE) this.finish();
+    }
+
+    this.hud.update();
+
     if (this.debugText) {
       this.debugKeys.forEach((k, i) => {
-        if (Phaser.Input.Keyboard.JustDown(k)) this.family.members[i].saltify();
+        if (Phaser.Input.Keyboard.JustDown(k)) this.family.members[i].saltify(true);
       });
+      if (Phaser.Input.Keyboard.JustDown(this.keyZero)) { resetRun(); this.restarting = true; this.scene.restart(); return; }
+      if (Phaser.Input.Keyboard.JustDown(this.keyFour)) this.family.members[0].lookTimer = 0;
       const b = this.lot.body;
       this.debugText.setText(
-        `vx ${b.velocity.x.toFixed(0)} vy ${b.velocity.y.toFixed(0)} onGround ${this.lot.onGround}\n` +
+        `vx ${b.velocity.x.toFixed(0)} vy ${b.velocity.y.toFixed(0)} onGround ${this.lot.onGround} wall:${this.destruction.x | 0} balls:${this.sulfur.balls.getLength()}\n` +
         this.family.members.map(m => `${m.memberName}:${m.state}`).join(' '));
     }
   }
