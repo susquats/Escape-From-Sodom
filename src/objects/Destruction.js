@@ -13,7 +13,8 @@ export default class Destruction {
       scene.add.rectangle(0, 0, w, worldH, 0xff6a00, a).setOrigin(0, 0).setDepth(599));
     this.flames = [];
     for (let i = 0; i < 12; i++) {
-      this.flames.push(scene.add.image(0, i * worldH / 12, 'flame').setOrigin(0.5, 0).setDepth(601));
+      this.flames.push(scene.add.sprite(0, i * worldH / 12, 'flame').setOrigin(0.5, 0).setDepth(601)
+        .play({ key: 'flame-flicker', startFrame: i % 2 }));
     }
     this.warning = scene.add.rectangle(0, 0, 6, GAME_HEIGHT, 0xff2000).setOrigin(0)
       .setScrollFactor(0).setDepth(950).setAlpha(0);

@@ -50,6 +50,8 @@ export default class Wife extends FamilyMember {
     this.state = 'lookingBack';
     this.phase = 'notice';
     this.phaseTimer = WIFE.noticeMs;
+    this.anims.stop();
+    this.setFrame(3); // alarmed pose
     this.bang = this.scene.add.text(this.x, this.y - this.height - 2, '!', { fontFamily: 'monospace',
       fontSize: '8px', color: '#ffe14a', stroke: '#000', strokeThickness: 2 })
       .setOrigin(0.5, 1).setDepth(800);

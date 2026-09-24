@@ -20,7 +20,7 @@ export default class AngelBoost {
     this.family.protect(ANGEL.durationMs);
     this.attached = false;
     const cam = scene.cameras.main;
-    this.angels = [0, 1].map(() => scene.add.image(cam.scrollX - 20, cam.scrollY - 20, 'angel').setDepth(700));
+    this.angels = [0, 1].map(() => scene.add.sprite(cam.scrollX - 20, cam.scrollY - 20, 'angel').setDepth(700).play('angel-flap'));
     this.angels.forEach((a, i) => {
       const t = this.targets()[i];
       scene.tweens.add({ targets: a, x: t.x, y: t.y, duration: ANGEL.swoopMs,

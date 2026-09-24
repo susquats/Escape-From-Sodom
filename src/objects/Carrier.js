@@ -14,8 +14,8 @@ export default class Carrier {
 
     this.view = scene.add.container(x, y).setDepth(10);
     this.angels = [
-      scene.add.image(-7, -18, 'angel').setOrigin(0.5),
-      scene.add.image(7, -18, 'angel').setOrigin(0.5).setFlipX(true),
+      scene.add.sprite(-7, -18, 'angel').setOrigin(0.5).play('angel-flap'),
+      scene.add.sprite(7, -18, 'angel').setOrigin(0.5).setFlipX(true).play({ key: 'angel-flap', startFrame: 1 }),
     ];
     this.view.add(this.angels);
     this.view.add(scene.add.image(-5, 2, 'lot').setOrigin(0.5));

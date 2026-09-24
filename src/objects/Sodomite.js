@@ -23,6 +23,7 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
       if (this.x < cam.scrollX + GAME_WIDTH + SODOMITE.wakeMargin) this.awake = true;
       else { this.setVelocityX(0); return; }
     }
+    this.play('sodomite-walk', true);
     const dx = lot.x - this.x;
     if (Math.abs(dx) > 4) this.dir = Math.sign(dx);
     this.setVelocityX(this.dir * SODOMITE.speed);
@@ -40,6 +41,7 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
   }
 
   flatten() {
+    this.anims.stop();
     this.alive = false;
     this.body.enable = false;
     this.setScale(1.3, 0.3);
@@ -62,6 +64,7 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
   }
 
   bonk(fromX) {
+    this.anims.stop();
     this.alive = false;
     this.body.enable = false;
     popText(this.scene, this.x, this.y - 8, 'BONK!', '#ffe14a');

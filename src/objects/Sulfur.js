@@ -44,7 +44,7 @@ export default class Sulfur {
   drop(x, y) {
     const b = this.balls.create(x, y, 'fireball').setDepth(500);
     b.setVelocity(Phaser.Math.FloatBetween(-SULFUR.maxDrift, SULFUR.maxDrift), SULFUR.fallSpeed);
-    this.scene.tweens.add({ targets: b, angle: 360, duration: 600, repeat: -1 });
+    b.play('fireball-flicker'); // the sprite's flame tips point up, so no spinning
   }
 
   impact(ball) {
@@ -54,6 +54,7 @@ export default class Sulfur {
     const f = this.flames.create(ball.x, ball.body.bottom, 'flame').setOrigin(0.5, 1).setDepth(500);
     f.body.setSize(8, 8);
     f.body.reset(f.x, f.y);
+    f.play('flame-flicker');
     scene.tweens.add({ targets: f, scaleY: 1.3, duration: 120, yoyo: true, repeat: -1 });
     scene.tweens.add({ targets: f, alpha: 0, delay: SULFUR.flameMs - 300, duration: 300,
       onComplete: () => f.destroy() });

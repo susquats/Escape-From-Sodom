@@ -7,6 +7,7 @@ export default class Halo extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this, true);
     this.setDepth(0.3);
+    this.play('halo-shine');
     this.body.setSize(14, 12);
     this.body.updateFromGameObject();
     scene.tweens.add({ targets: this, y: y - 2, duration: 500, yoyo: true, repeat: -1 });

@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "sodom", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "--port", "5174"], "port": 5174 }
+    { "name": "sodom", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "--port", "5174"], "port": 5174 },
+    { "name": "sodom-art", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "--port", "5181", "--strictPort"], "port": 5181 }
   ]
 }

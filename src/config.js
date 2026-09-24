@@ -77,8 +77,9 @@ export const ANGEL = {
 const params = new URLSearchParams(location.search);
 export const DEBUG = params.has('debug');
 const SCENES = { title: 'TitleScene', sodom: 'SodomScene', flight: 'FlightScene', wilderness: 'WildernessScene',
-  mountain: 'MountainScene', ending: 'EndingScene', credits: 'CreditsScene' };
+  mountain: 'MountainScene', ending: 'EndingScene', credits: 'CreditsScene', art: 'ArtScene' };
 export const START_SCENE = SCENES[params.get('scene')] || 'TitleScene';
+export const START_CP = parseInt(params.get('cp'), 10) || 0; // debug: start Act I at the Nth checkpoint
 export const START_LOST = (params.get('lost') || '').split(',').filter(Boolean);
 
 export const FLIGHT = {

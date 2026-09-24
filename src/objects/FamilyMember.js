@@ -48,7 +48,17 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  // visual only: walk while moving along the trail, stand still otherwise
+  animate() {
+    const moved = this.lastX !== undefined && (Math.abs(this.x - this.lastX) > 0.3 || Math.abs(this.y - this.lastY) > 0.3);
+    this.lastX = this.x;
+    this.lastY = this.y;
+    if (moved) this.play(`${this.memberName}-walk`, true);
+    else { this.anims.stop(); this.setFrame(0); }
+  }
+
   update(delta) {
+    if (this.state === 'following' || this.state === 'rejoining') this.animate();
     switch (this.state) {
       case 'following': {
         const p = this.trail.sample(this.spacing);

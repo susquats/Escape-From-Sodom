@@ -66,5 +66,25 @@ export default class Lot extends Phaser.Physics.Arcade.Sprite {
       body.setVelocityY(body.velocity.y * MOVE.jumpCutMultiplier);
       this.jumpCut = true;
     }
+
+    this.animate();
+  }
+
+  // visual only: idle / run / jump / fall frames (see src/art/sprites.js)
+  animate() {
+    const body = this.body;
+    if (!this.onGround) {
+      this.anims.stop();
+      this.setFrame(body.velocity.y < 0 ? 6 : 7);
+    } else if (Math.abs(body.velocity.x) > 10) {
+      this.play('lot-run', true);
+    } else {
+      this.play('lot-idle', true);
+    }
+  }
+
+  showDead() {
+    this.anims.stop();
+    this.setFrame(8);
   }
 }
