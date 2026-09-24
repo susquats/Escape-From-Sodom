@@ -26,4 +26,17 @@ const game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { gravity: { y: MOVE.gravity }, debug: DEBUG } },
   scene: [BootScene, TitleScene, SodomScene, FlightScene, WildernessScene, MountainScene, EndingScene, CreditsScene, ArtScene],
 });
+// Phones: the first touch goes fullscreen (hides the browser chrome) and locks landscape where supported.
+// iOS Safari/Chrome have no page fullscreen; there, use Add to Home Screen (see manifest).
+const goFullscreen = () => {
+  const el = document.documentElement;
+  if (!document.fullscreenElement && el.requestFullscreen) {
+    el.requestFullscreen({ navigationUI: 'hide' })
+      .then(() => screen.orientation?.lock?.('landscape').catch(() => {}))
+      .catch(() => {});
+  }
+};
+if (matchMedia('(pointer: coarse)').matches) {
+  document.addEventListener('pointerup', goFullscreen, { once: true });
+}
 if (DEBUG) window.game = game;

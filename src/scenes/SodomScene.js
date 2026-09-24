@@ -80,6 +80,8 @@ export default class SodomScene extends Phaser.Scene {
     this.trail = new Trail(this.lot.x, feetY(spawn), FAMILY.trailMaxLength);
     this.family = new Family(this, this.trail, this.terrain);
     this.family.members[0].lookFromX = cx(cps[cps.length - 1]); // she only looks back on the last stretch
+    // salt that lands over a pit rests on its invisible floor instead of falling out of the world, so it can be rescued
+    this.physics.add.collider(this.family.saltGroup, this.pitFloors);
 
     this.vents = [];
     this.enemies = [];
