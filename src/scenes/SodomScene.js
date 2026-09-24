@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, TILE, DEBUG, MOVE, FAMILY } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, TILE, DEBUG, MOVE, FAMILY, START_CP } from '../config.js';
 import Lot from '../objects/Lot.js';
 import Controls from '../input/Controls.js';
 import Trail from '../objects/Trail.js';
@@ -9,14 +9,21 @@ import Destruction from '../objects/Destruction.js';
 import Sulfur from '../objects/Sulfur.js';
 import Sodomite from '../objects/Sodomite.js';
 import Halo from '../objects/Halo.js';
+import Checkpoint from '../objects/Checkpoint.js';
 import AngelBoost from '../objects/AngelBoost.js';
 import FamilyHud from '../ui/FamilyHud.js';
-import { resetRun } from '../runState.js';
+import { run, resetRun } from '../runState.js';
 import { popText, loseLife } from '../fx.js';
+import { SODOM_SECTIONS } from '../levels/sodom.js';
+import { parseLevel, ROWS, SOLID, ONE_WAY } from '../levels/parseLevel.js';
 
-const WORLD_W = 2400;
-const WORLD_H = 360;
-const STREET = 16; // street-level tile row
+const LEVEL = parseLevel(SODOM_SECTIONS);
+const WORLD_W = LEVEL.cols * TILE;
+const WORLD_H = ROWS * TILE;
+const STREET_TOP = 17 * TILE; // y of the normal street surface
+const CAM_BOTTOM = 20 * TILE; // the camera never scrolls below this (saves screen on plain ground)
+const CHASM_COLS = 6;
+let cpDebugApplied = false;
 
 export default class SodomScene extends Phaser.Scene {
   constructor() {
@@ -30,25 +37,58 @@ export default class SodomScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.physics.world.setBoundsCollision(true, true, true, false);
 
+    // debug: ?cp=N starts at the Nth checkpoint (first load only)
+    const cps = LEVEL.entities.filter(e => e.type === 'checkpoint');
+    if (!cpDebugApplied) {
+      cpDebugApplied = true;
+      if (START_CP > 0 && run.checkpointX === null && cps[START_CP - 1]) {
+        run.checkpointX = cps[START_CP - 1].col * TILE + TILE / 2;
+      }
+    }
+    const cpX = run.checkpointX;
+    const cx = (e) => e.col * TILE + TILE / 2;
+    const feetY = (e) => (e.row + 1) * TILE;
+
     this.buildBackground();
-    this.terrain = this.physics.add.staticGroup();
-    this.buildLevel();
+    this.buildTerrain();
     this.buildChasm();
 
-    this.lot = new Lot(this, 48, STREET * TILE - 10);
+    const spawn = cpX === null
+      ? LEVEL.entities.find(e => e.type === 'lot')
+      : cps.find(e => cx(e) === cpX) || LEVEL.entities.find(e => e.type === 'lot');
+    this.lot = new Lot(this, cx(spawn), feetY(spawn) - 10);
     this.physics.add.collider(this.lot, this.terrain);
 
-    this.trail = new Trail(this.lot.x, STREET * TILE, FAMILY.trailMaxLength);
+    this.trail = new Trail(this.lot.x, feetY(spawn), FAMILY.trailMaxLength);
     this.family = new Family(this, this.trail, this.terrain);
 
-    const vx = (tx) => tx * TILE + TILE / 2;
-    this.vents = [
-      new FireVent(this, vx(10), STREET * TILE, 0),
-      new FireVent(this, vx(24), (STREET - 3) * TILE, 700),
-      new FireVent(this, vx(95), STREET * TILE, 0),
-      new FireVent(this, vx(100), STREET * TILE, 1200),
-    ];
+    this.vents = [];
+    this.enemies = [];
+    this.halos = [];
+    this.checkpoints = [];
+    let gate = null;
+    const behind = (e) => cpX !== null && cx(e) < cpX + 64;
+    LEVEL.entities.forEach(e => {
+      switch (e.type) {
+        case 'vent': this.vents.push(new FireVent(this, cx(e), feetY(e), (this.vents.length % 3) * 700)); break;
+        case 'sodomite': if (!behind(e)) this.enemies.push(new Sodomite(this, cx(e), feetY(e) - 9)); break;
+        case 'halo': if (!behind(e)) this.halos.push(new Halo(this, cx(e), e.row * TILE + TILE / 2)); break;
+        case 'checkpoint': {
+          const cp = new Checkpoint(this, cx(e), feetY(e));
+          if (cpX !== null && cp.x <= cpX) cp.activate(this, true);
+          this.checkpoints.push(cp);
+          break;
+        }
+        case 'gate': gate = e; break;
+      }
+    });
+
     this.destruction = new Destruction(this, WORLD_H);
+    if (cpX !== null) {
+      this.destruction.x = cpX - 240;
+      this.destruction.delay = 1500;
+      this.destruction.place();
+    }
     this.sulfur = new Sulfur(this, this.terrain, WORLD_W, WORLD_H);
     this.hud = new FamilyHud(this, this.family);
 
@@ -59,15 +99,6 @@ export default class SodomScene extends Phaser.Scene {
       if (this.time.now - salt.member.saltedAt > 350) salt.member.rescue(); // touch is enough
     });
 
-    const ex = (tx) => tx * TILE + TILE / 2;
-    this.enemies = [
-      new Sodomite(this, ex(28), (STREET - 3) * TILE - 9),
-      new Sodomite(this, ex(47), STREET * TILE - 9),
-      new Sodomite(this, ex(92), STREET * TILE - 9),
-      new Sodomite(this, ex(108), STREET * TILE - 9),
-      new Sodomite(this, ex(118), STREET * TILE - 9),
-      new Sodomite(this, ex(130), STREET * TILE - 9),
-    ];
     this.physics.add.collider(this.enemies, this.terrain);
     this.physics.add.overlap(this.lot, this.enemies, (lot, e) => {
       if (!e.alive) return;
@@ -79,7 +110,7 @@ export default class SodomScene extends Phaser.Scene {
     this.physics.add.overlap(this.sulfur.balls, this.enemies, (ball, e) => { if (e.alive) { e.burn(); ball.destroy(); } });
 
     // the way out: a halo by the wall calls the angels
-    this.gateHalo = new Halo(this, ex(138), STREET * TILE - 14).setScale(1.5);
+    this.gateHalo = new Halo(this, cx(gate), (gate.row + 1) * TILE - 14).setScale(1.5);
     this.physics.add.overlap(this.lot, this.gateHalo, (lot, h) => {
       if (!h.active || this.cutscene) return;
       h.collect();
@@ -87,10 +118,6 @@ export default class SodomScene extends Phaser.Scene {
     });
 
     this.boost = new AngelBoost(this, this.lot, this.family);
-    this.halos = [
-      new Halo(this, ex(59), (STREET - 4) * TILE - 28),
-      new Halo(this, ex(100), STREET * TILE - 44),
-    ];
     this.physics.add.overlap(this.lot, this.halos, (lot, h) => {
       if (!h.active) return;
       h.collect();
@@ -98,12 +125,13 @@ export default class SodomScene extends Phaser.Scene {
     });
 
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, WORLD_W, WORLD_H);
+    cam.setBounds(0, 0, WORLD_W, CAM_BOTTOM);
     cam.startFollow(this.lot, true, 0.12, 0.12);
     cam.setDeadzone(40, 30);
     cam.setFollowOffset(-30, 0);
-    cam.scrollY = WORLD_H; // clamped to bounds; avoids a camera pan at start
-    cam.scrollX = 0;
+    // start close to the spawn so there is no long pan
+    cam.scrollX = Phaser.Math.Clamp(this.lot.x - 130, 0, WORLD_W - GAME_WIDTH);
+    cam.scrollY = Phaser.Math.Clamp(this.lot.y - GAME_HEIGHT * 0.6, 0, CAM_BOTTOM - GAME_HEIGHT);
     cam.fadeIn(400);
 
     this.controls = new Controls(this);
@@ -167,6 +195,7 @@ export default class SodomScene extends Phaser.Scene {
 
   startPickup() {
     this.cutscene = true;
+    run.checkpointX = null; // Act I is finished
     this.destruction.stopped = true;
     this.sulfur.stop();
     if (this.boost.timer > 0) this.boost.end();
@@ -212,50 +241,34 @@ export default class SodomScene extends Phaser.Scene {
   }
 
   buildChasm() {
-    const x0 = 144 * TILE, top = STREET * TILE + 8;
+    const x0 = (LEVEL.cols - CHASM_COLS) * TILE, top = STREET_TOP + 8;
     this.add.rectangle(x0, top, WORLD_W - x0, WORLD_H - top, 0x3a0808).setOrigin(0).setDepth(-0.8);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < CHASM_COLS; i++) {
       const f = this.add.image(x0 + 8 + i * 16 + Phaser.Math.Between(-3, 3), top, 'flame').setOrigin(0.5, 1).setDepth(-0.7);
       this.tweens.add({ targets: f, scaleY: 0.6, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
     }
   }
 
   buildBackground() {
-    this.add.rectangle(0, 0, WORLD_W, WORLD_H, 0x2b1b3a).setOrigin(0).setScrollFactor(0).setDepth(-3);
+    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x2b1b3a).setOrigin(0).setScrollFactor(0).setDepth(-3);
+    // skyline glued to the bottom of the screen; only scrolls sideways
     const layers = [[0.3, 0x3d2a52, 40, 110], [0.6, 0x4f3466, 30, 80]];
     layers.forEach(([factor, color, minH, maxH], i) => {
-      for (let x = 0; x < WORLD_W; x += 48) {
+      for (let x = 0; x < WORLD_W * factor + GAME_WIDTH; x += 48) {
         const h = minH + ((x * 37 + i * 91) % (maxH - minH));
-        this.add.rectangle(x, WORLD_H - 90, 36, h, color).setOrigin(0, 1)
-          .setScrollFactor(factor).setDepth(-2 + i * 0.5);
+        this.add.rectangle(x, GAME_HEIGHT - 20, 36, h, color).setOrigin(0, 1)
+          .setScrollFactor(factor, 0).setDepth(-2 + i * 0.5);
       }
     });
   }
 
-  platform(tx, ty, w, h = 1) {
-    const t = this.add.tileSprite(tx * TILE, ty * TILE, w * TILE, h * TILE, 'ground').setOrigin(0);
-    this.terrain.add(t);
-    return t;
-  }
-
-  buildLevel() {
-    const bottom = (ty) => Math.max(1, Math.round(WORLD_H / TILE) - ty); // fill down to world bottom
-    const solid = (tx, ty, w) => this.platform(tx, ty, w, bottom(ty));
-
-    solid(0, STREET, 15);          // 1. flat street
-    solid(15, STREET - 1, 3);      // 2. low step
-    solid(18, STREET - 3, 13);     //    fallen pillar -> rooftop
-    solid(35, STREET - 3, 8);      // 3. rooftop 2 after a 4-tile gap
-    solid(43, STREET, 8);          // 4. drop to street
-    solid(51, STREET - 1, 2);      // 5. staircase
-    solid(53, STREET - 2, 2);
-    solid(55, STREET - 3, 2);
-    solid(57, STREET - 4, 4);
-    this.platform(63, 11, 3);      // 6. floating platforms over the pit
-    this.platform(69, 10, 3);
-    this.platform(75, 11, 3);
-    solid(82, STREET, 62);         // 8. end area (7. pit is tx 61-81)
-    this.platform(140, STREET - 6, 2, 6); // city gate marker
+  buildTerrain() {
+    const map = this.make.tilemap({ data: LEVEL.data, tileWidth: TILE, tileHeight: TILE });
+    const tileset = map.addTilesetImage('tiles', 'tiles', TILE, TILE, 0, 0);
+    const layer = map.createLayer(0, tileset, 0, 0).setDepth(-1);
+    layer.setCollision(SOLID);
+    layer.forEachTile(t => { if (t.index === ONE_WAY) t.setCollision(false, false, true, false); });
+    this.terrain = layer;
   }
 
   update(time, delta) {
@@ -290,6 +303,10 @@ export default class SodomScene extends Phaser.Scene {
 
     this.hud.update();
 
+    for (const cp of this.checkpoints) {
+      if (!cp.active && this.lot.x > cp.x) { cp.activate(this); run.checkpointX = cp.x; }
+    }
+
     if (this.debugText) {
       this.debugKeys.forEach((k, i) => {
         if (Phaser.Input.Keyboard.JustDown(k)) this.family.members[i].saltify(true);
@@ -299,7 +316,7 @@ export default class SodomScene extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(this.keyFive)) this.boost.start();
       const b = this.lot.body;
       this.debugText.setText(
-        `vx ${b.velocity.x.toFixed(0)} vy ${b.velocity.y.toFixed(0)} onGround ${this.lot.onGround} wall:${this.destruction.x | 0} balls:${this.sulfur.balls.getLength()} enemies:${this.enemies.filter(e => e.alive).length} boost:${Math.max(0, this.boost.timer | 0)}\n` +
+        `vx ${b.velocity.x.toFixed(0)} vy ${b.velocity.y.toFixed(0)} onGround ${this.lot.onGround} wall:${this.destruction.x | 0} balls:${this.sulfur.balls.getLength()} enemies:${this.enemies.filter(e => e.alive).length} boost:${Math.max(0, this.boost.timer | 0)} col:${(this.lot.x / TILE) | 0} cp:${run.checkpointX ?? '-'}\n` +
         this.family.members.map(m => `${m.memberName}:${m.state}`).join(' '));
     }
   }
