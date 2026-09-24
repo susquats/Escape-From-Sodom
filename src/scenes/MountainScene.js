@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, DEBUG, MOVE, MOUNTAIN } from '../config.js';
 import Lot from '../objects/Lot.js';
 import Controls from '../input/Controls.js';
+import RunHud from '../ui/RunHud.js';
+import MountainFollowers from '../objects/MountainFollowers.js';
 import { run } from '../runState.js';
 import { popText, puff, loseLife } from '../fx.js';
 import { setupView, fadeIn, fadeOut, shake, setViewY, viewY, ART_SCALE } from '../view.js';
@@ -35,6 +37,8 @@ export default class MountainScene extends Phaser.Scene {
     this.physics.add.collider(this.lot, this.platforms, onLand);
     this.physics.add.collider(this.lot, this.movers, onLand);
 
+    this.followers = new MountainFollowers(this, this.lot);
+    this.hud = new RunHud(this);
     this.controls = new Controls(this, { touchButtons: ['left', 'right', 'restart'] });
 
     const cam = this.cameras.main;
@@ -153,7 +157,9 @@ export default class MountainScene extends Phaser.Scene {
     const cam = this.cameras.main;
     popText(this, this.lot.x, viewY(cam) + GAME_HEIGHT - 10, 'AAAAH!');
     shake(this, 200, 0.01);
-    const { gameOver } = loseLife(this);
+    const { gameOver, name } = loseLife(this);
+    this.hud.update();
+    if (name) this.followers.sacrifice(name);
     if (!gameOver) {
       // a family member is lost in Lot's place; Lot bounces back up and carries on
       this.graceMs = 2000;
@@ -189,6 +195,7 @@ export default class MountainScene extends Phaser.Scene {
 
     lot.update({ left: this.controls.left, right: this.controls.right, jumpDown: true, jumpPressed: false }, delta);
     setViewY(cam, Math.max(0, Math.min(viewY(cam), lot.y - MOUNTAIN.cameraLead)));
+    this.followers.update();
 
     if (lot.y > viewY(cam) + GAME_HEIGHT + 16) {
       if (this.invincible || this.graceMs > 0) lot.body.setVelocityY(-500);

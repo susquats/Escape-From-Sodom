@@ -67,7 +67,8 @@ export default class WildernessScene extends Phaser.Scene {
     [[4, 30, 22], [30, 48, 16], [52, 26, 20], [76, 56, 18], [100, 36, 24], [128, 44, 16], [150, 28, 22], [176, 40, 18]]
       .forEach(([x, h, w]) => this.add.rectangle(x, gy, w, h, 0x4a1414).setOrigin(0, 1).setScrollFactor(0.2).setDepth(-2.5));
     [20, 88, 150].forEach(x => {
-      const f = this.add.image(x, gy - 34, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setScrollFactor(0.2).setDepth(-2.4);
+      const f = this.add.sprite(x, gy - 34, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setScrollFactor(0.2).setDepth(-2.4)
+        .play({ key: 'flame-flicker', startFrame: x % 4 });
       this.tweens.add({ targets: f, scaleY: 0.6 * ART_SCALE, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
     });
 

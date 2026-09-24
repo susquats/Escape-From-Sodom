@@ -9,21 +9,19 @@ export default class Destruction {
     this.delay = DESTRUCTION.startDelayMs;
     this.stopped = false;
 
-    this.fill = scene.add.rectangle(0, 0, 3000, worldH, 0x8a1a0a).setOrigin(1, 0).setDepth(600);
+    this.fill = scene.add.tileSprite(0, 0, 6000, worldH * 2, 'fireinner').setScale(ART_SCALE).setOrigin(1, 0).setDepth(600);
+    // roiling fire along the leading edge (src/art/props.js), scrolled upward in update()
+    this.edge = scene.add.tileSprite(0, 0, 64, worldH * 2, 'firewall').setScale(ART_SCALE).setOrigin(0.55, 0).setDepth(600.5);
     this.glow = [[6, 0.5], [12, 0.3], [20, 0.15]].map(([w, a]) =>
       scene.add.rectangle(0, 0, w, worldH, 0xff6a00, a).setOrigin(0, 0).setDepth(599));
-    this.flames = [];
-    for (let i = 0; i < 12; i++) {
-      this.flames.push(scene.add.sprite(0, i * worldH / 12, 'flame').setScale(ART_SCALE).setOrigin(0.5, 0).setDepth(601)
-        .play({ key: 'flame-flicker', startFrame: i % 2 }));
-    }
     this.warning = scene.add.rectangle(0, 0, 6, GAME_HEIGHT, 0xff2000).setOrigin(0)
       .setScrollFactor(0).setDepth(950).setAlpha(0);
     this.place();
   }
 
   place() {
-    this.fill.x = this.x;
+    this.fill.x = this.x - 8;
+    this.edge.x = this.x;
     this.glow.forEach(g => { g.x = this.x; });
   }
 
@@ -35,10 +33,8 @@ export default class Destruction {
       this.x = Math.max(this.x, viewX(cam) - DESTRUCTION.maxLag);
     }
     this.place();
-    this.flames.forEach(f => {
-      f.x = this.x + Phaser.Math.FloatBetween(-3, 3);
-      f.setScale(ART_SCALE, Phaser.Math.FloatBetween(0.8, 1.6) * ART_SCALE);
-    });
+    this.edge.tilePositionY += delta * 0.12;
+    this.fill.tilePositionY += delta * 0.07;
     const d = viewX(cam) - this.x;
     this.warning.setAlpha(d > 0
       ? Phaser.Math.Clamp(1 - d / DESTRUCTION.warnRange, 0, 1) * (0.5 + 0.3 * Math.sin(this.scene.time.now / 100))

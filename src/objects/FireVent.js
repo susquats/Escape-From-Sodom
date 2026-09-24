@@ -12,7 +12,8 @@ export default class FireVent extends Phaser.GameObjects.Sprite {
     this.body.updateFromGameObject();
     this.t = phaseOffsetMs;
     this.ventState = 'off';
-    scene.add.rectangle(x, groundY, 12, 3, 0x1a1020).setOrigin(0.5, 1).setDepth(-0.9);
+    scene.add.image(x, groundY + 1, 'grate').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-0.9);
+    this.play('vent-roar');
     this.setDepth(0.5);
     this.applyState();
   }

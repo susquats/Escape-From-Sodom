@@ -19,18 +19,15 @@ export default class Carrier {
       scene.add.sprite(7, -18, 'angel').setScale(ART_SCALE).setOrigin(0.5).setFlipX(true).play({ key: 'angel-flap', startFrame: 1 }),
     ];
     this.view.add(this.angels);
-    // everyone hangs by their hands (hang frames have the hands at the top): parents from the angels' feet,
-    // daughters from their parents' feet
-    const hanger = (x, y, key, startFrame) =>
-      scene.add.sprite(x, y, key).setScale(ART_SCALE).setOrigin(0.5, 0).play({ key: `${key}-hang`, startFrame });
-    this.view.add(hanger(-6, -9, 'lot', 0));
+    // the whole family hangs by their hands from the angels' feet in one overlapping row
+    const hanger = (x, key, startFrame) =>
+      scene.add.sprite(x, -9, key).setScale(ART_SCALE).setOrigin(0.5, 0).play({ key: `${key}-hang`, startFrame });
     this.danglers = [];
-    if (!run.lost.has('wife')) this.view.add(hanger(6, -9, 'wife', 1));
-    [['daughter1', -6], ['daughter2', 6]].forEach(([key, px], i) => {
+    [['daughter1', -12, 0], ['lot', -4, 0], ['wife', 4, 1], ['daughter2', 12, 1]].forEach(([key, px, f]) => {
       if (run.lost.has(key)) return;
-      const d = hanger(px, 11, key, i);
+      const d = hanger(px, key, f);
       this.view.add(d);
-      this.danglers.push(d);
+      if (key !== 'lot') this.danglers.push(d);
     });
   }
 

@@ -73,6 +73,7 @@ export const ANGEL = {
   durationMs: 3200,
   runSpeed: 185,        // Lot's boosted max speed
   accelMultiplier: 1.6,
+  lotGap: 18,           // path px Lot and the family fall back while the angels lead
   swoopMs: 350,         // entry/exit flight time
 };
 
@@ -88,11 +89,11 @@ export const FLIGHT = {
   gravity: 700,
   flapVelocity: 230,
   maxFallSpeed: 320,
-  scrollSpeed: 95,      // px/s obstacles move left
+  scrollSpeed: 85,      // px/s obstacles move left
   carrierX: 90,         // fixed screen x of the group
   hitbox: { w: 24, h: 32 },
-  gapSize: 80,          // vertical opening in "gate" obstacles
-  obstacleWidth: 24,
+  gapSize: 110,         // vertical opening in "gate" obstacles
+  obstacleWidth: 20,
 };
 
 export const MOUNTAIN = {

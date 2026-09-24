@@ -2,22 +2,47 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, DEBUG, FLIGHT } from '../config.js';
 import Carrier from '../objects/Carrier.js';
 import { COMET_HEAD } from '../art/items.js';
+import RunHud from '../ui/RunHud.js';
 import Controls from '../input/Controls.js';
 import { popText, puff, loseLife } from '../fx.js';
 import { setupView, fadeIn, fadeOut, shake, flash, ART_SCALE } from '../view.js';
+import { buildingTexture } from '../art/flightBuildings.js';
+import { buildSodomBackdrop } from '../art/sodomBackdrop.js';
 
 // Seconds after the first flap; obstacles spawn at x = GAME_WIDTH + 20.
+// Pipes reach the carrier ~2.9 s after spawning and fireballs ~1.7 s, so fireballs are timed to arrive at
+// least a second away from any pipe -- except the one marked "on purpose".
 const SCRIPT = [
   { at: 1.0, type: 'tower', top: 110 },
   { at: 3.0, type: 'hang', bottom: 75 },
   { at: 5.0, type: 'gate', gapY: 95 },
-  { at: 6.8, type: 'fireball', y: 55 },
-  { at: 7.8, type: 'fireball', y: 125 },
+  { at: 7.88, type: 'fireball', y: 55 },
+  { at: 8.98, type: 'fireball', y: 125 },
   { at: 9.5, type: 'gate', gapY: 70 },
   { at: 11.5, type: 'tower', top: 90 },
+  { at: 11.72, type: 'fireball', y: 90 },
   { at: 13.3, type: 'gate', gapY: 110 },
+  { at: 15.88, type: 'fireball', y: 60 },
+  { at: 16.0, type: 'hang', bottom: 85 },
+  { at: 18.0, type: 'gate', gapY: 60 },
+  { at: 20.58, type: 'fireball', y: 40 },
+  { at: 21.68, type: 'fireball', y: 110 },
+  { at: 22.3, type: 'tower', top: 100 },
+  { at: 24.2, type: 'gate', gapY: 100 },
+  { at: 25.42, type: 'fireball', y: 125 }, // on purpose: crosses the gate above, so stay high in the gap
+  { at: 26.0, type: 'gate', gapY: 75 },
+  { at: 28.0, type: 'hang', bottom: 65 },
+  { at: 29.5, type: 'gate', gapY: 105 },
 ];
-const LANDING_AT = 17;
+// Building blocks, left to right: w = width (world units), s = style (0 brick, 1 colonnade, 2 tower),
+// d = how much shorter than the main building (the one without d).
+const CLUSTERS = [
+  [{ w: 28, s: 0 }, { w: 22, s: 1, d: 14 }],
+  [{ w: 18, s: 2, d: 18 }, { w: 30, s: 1 }, { w: 20, s: 0, d: 8 }],
+  [{ w: 22, s: 1, d: 12 }, { w: 28, s: 0 }],
+  [{ w: 24, s: 2 }, { w: 18, s: 0, d: 16 }, { w: 22, s: 1, d: 28 }],
+];
+const LANDING_AT = 33;
 const GROUND_Y = 150;
 const STROKE = { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 };
 
@@ -39,22 +64,12 @@ export default class FlightScene extends Phaser.Scene {
     this.scrollMul = 1;
     this.invincible = false;
 
-    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x3a1010).setOrigin(0).setDepth(-3);
-    this.layers = [[0.3, 0x5a1a14, 40, 110], [0.6, 0x7a2418, 30, 80]].map(([factor, color, minH, maxH], i) => {
-      const items = [];
-      for (let x = 0; x < GAME_WIDTH + 96; x += 48) {
-        const h = minH + ((x * 37 + i * 91) % (maxH - minH));
-        items.push(this.add.rectangle(x, GAME_HEIGHT - 20, 36, h, color).setOrigin(0, 1).setDepth(-2 + i * 0.5));
-        if ((x / 48 + i) % 2 === 0) {
-          items.push(this.add.image(x + 18, GAME_HEIGHT - 20 - h, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-1.9 + i * 0.5));
-        }
-      }
-      return { factor, items, span: Math.ceil((GAME_WIDTH + 96) / 48) * 48 };
-    });
+    this.buildBackground();
 
     this.carrier = new Carrier(this, FLIGHT.carrierX, 80);
     this.obstacles = this.physics.add.group({ allowGravity: false, immovable: true });
     this.physics.add.overlap(this.carrier.zone, this.obstacles, () => this.crash());
+    this.hud = new RunHud(this);
     this.controls = new Controls(this, { touchButtons: ['restart'] });
     this.input.on('pointerdown', () => { this.tapQueued = true; });
 
@@ -80,27 +95,71 @@ export default class FlightScene extends Phaser.Scene {
     return obj;
   }
 
-  tower(top) {
-    const w = FLIGHT.obstacleWidth, x = GAME_WIDTH + 20;
-    const r = this.add.rectangle(x, top, w, GAME_HEIGHT - top, 0xb8894a).setOrigin(0.5, 0).setDepth(5);
-    this.addBody(r);
-    const edge = this.add.rectangle(x, top, w, 2, 0x6a4a22).setOrigin(0.5, 0).setDepth(6);
-    this.addBody(edge);
-    for (let i = -1; i <= 1; i++) {
-      const f = this.add.image(x + i * 8, top, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(6);
-      this.addBody(f);
-    }
+  // Obstacles are little blocks of the city: two or three ruined buildings (brick, colonnade, burning tower,
+  // painted in src/art/flightBuildings.js) side by side. The main one sets the opening; the others are
+  // shorter, so they never narrow it. Each building is one image and one physics body.
+  cluster(edge, hang) {
+    const n = hang ? this.hangCount++ : this.towerCount++;
+    const parts = CLUSTERS[n % CLUSTERS.length];
+    const total = parts.reduce((t, q) => t + q.w, 0);
+    let x = GAME_WIDTH + 20 - total / 2;
+    parts.forEach((q, i) => {
+      const cut = q.d || 0;                                  // how much shorter than the main building
+      const y = hang ? 0 : edge + cut;
+      const wallH = hang ? edge - cut : GAME_HEIGHT + 10 - y;
+      // A shallow top half of a gate can be shorter than one of its decorative offsets.  That
+      // piece belongs entirely above the screen, so omit it rather than asking Pix to allocate
+      // a negative-height texture.  Advancing x preserves the cluster's intended silhouette.
+      if (wallH <= 0) {
+        x += q.w;
+        return;
+      }
+      const key = buildingTexture(this, { style: q.s, w: q.w * 2, h: Math.round(wallH * 2), hang, seed: n * 3 + i });
+      const img = this.add.image(x, y, key).setScale(ART_SCALE).setOrigin(0, 0).setDepth(5);
+      this.addBody(img);
+      if (!hang && q.s === 2) {
+        for (const fx of [0.3, 0.7]) {
+          const f = this.add.sprite(x + q.w * fx, y + 4, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(6)
+            .play({ key: 'flame-flicker', startFrame: i });
+          this.addBody(f);
+        }
+      }
+      x += q.w;
+    });
   }
 
-  hang(bottom) {
-    const w = FLIGHT.obstacleWidth, x = GAME_WIDTH + 20;
-    this.addBody(this.add.rectangle(x, 0, w, bottom, 0x8a8078).setOrigin(0.5, 0).setDepth(5));
-    this.addBody(this.add.rectangle(x, bottom - 4, w, 4, 0x554d46).setOrigin(0.5, 0).setDepth(6));
-  }
+  tower(top) { this.cluster(top, false); }
+
+  hang(bottom) { this.cluster(bottom, true); }
 
   gate(gapY) {
     this.hang(gapY - FLIGHT.gapSize / 2);
     this.tower(gapY + FLIGHT.gapSize / 2);
+  }
+
+  // The burning city from Act I (src/art/sodomBackdrop.js) scrolling past, and a band of fire along the bottom.
+  buildBackground() {
+    buildSodomBackdrop(this);
+    this.towerCount = 0;
+    this.hangCount = 0;
+    this.add.image(0, 0, 'sodom-sky').setOrigin(0).setScale(ART_SCALE).setScrollFactor(0).setDepth(-3);
+    const band = (key, y, h, depth) => this.add.tileSprite(0, y, GAME_WIDTH * 2, h * 2, key).setOrigin(0)
+      .setScale(ART_SCALE).setScrollFactor(0).setDepth(depth);
+    this.layers = [
+      { factor: 0.08, tile: band('sodom-clouds', 0, 150, -2.9) },
+      { factor: 0.2, tile: band('sodom-far', 66, 120, -2.6).setTint(0xb090a0) },
+      // darker and lower than in Act I, so the obstacles stand out in front of it
+      { factor: 0.45, tile: band('sodom-mid', 78, 140, -2.2).setTint(0x8a7080) },
+      { factor: 1, tile: band('pitglow', GAME_HEIGHT - 30, 32, -1.9) },
+    ];
+    // fire along the bottom: falling in means death, so it should look like it
+    this.fireRow = [];
+    for (let x = 0; x < GAME_WIDTH + 24; x += 12) {
+      const f = this.add.sprite(x, GAME_HEIGHT + 3, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setScrollFactor(0).setDepth(-1.8)
+        .play({ key: 'flame-flicker', startFrame: (x / 12) % 4 });
+      this.tweens.add({ targets: f, scaleY: Phaser.Math.FloatBetween(1.1, 1.5) * ART_SCALE, duration: Phaser.Math.Between(180, 320), yoyo: true, repeat: -1 });
+      this.fireRow.push(f);
+    }
   }
 
   fireball(y) {
@@ -119,6 +178,7 @@ export default class FlightScene extends Phaser.Scene {
     shake(this, 200, 0.01);
     flash(this, 100, 255, 80, 40);
     const { gameOver, name } = loseLife(this);
+    this.hud.update();
     if (!gameOver) {
       // a family member is lost in Lot's place; the flight goes on
       this.carrier.sacrifice(name);
@@ -134,12 +194,11 @@ export default class FlightScene extends Phaser.Scene {
   }
 
   scrollBackground(delta) {
-    this.layers.forEach(l => {
-      const dx = FLIGHT.scrollSpeed * l.factor * this.scrollMul * delta / 1000;
-      l.items.forEach(it => {
-        it.x -= dx;
-        if (it.x < -48) it.x += l.span;
-      });
+    const d = FLIGHT.scrollSpeed * this.scrollMul * delta / 1000;
+    this.layers.forEach(l => { l.tile.tilePositionX += d * l.factor * 2; }); // texture px = 2 x world
+    this.fireRow.forEach(f => {
+      f.x -= d;
+      if (f.x < -12) f.x += this.fireRow.length * 12;
     });
   }
 
@@ -189,9 +248,11 @@ export default class FlightScene extends Phaser.Scene {
     const c = this.carrier;
     c.body.enable = false;
     c.freeze = true;
-    const ground = this.add.rectangle(GAME_WIDTH, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y, 0xd9b774)
-      .setOrigin(0).setDepth(8);
+    // desert strip (src/art/flightProps.js); its sandy lip is 3 units below the top of the texture
+    const ground = this.add.tileSprite(GAME_WIDTH, GROUND_Y - 3, GAME_WIDTH * 2, (GAME_HEIGHT - GROUND_Y + 3) * 2, 'fland')
+      .setScale(ART_SCALE).setOrigin(0).setDepth(8);
     this.tweens.add({ targets: ground, x: 0, duration: 1200 });
+    this.tweens.add({ targets: [...this.fireRow, this.layers[3].tile], alpha: 0, duration: 1200 });
     this.tweens.addCounter({ from: 1, to: 0, duration: 1200, onUpdate: t => { this.scrollMul = t.getValue(); } });
     this.tweens.add({ targets: c.view, x: 160, y: 100, rotation: 0, duration: 1400, onComplete: () => this.release() });
   }

@@ -1,39 +1,18 @@
 // Sprite table. Characters (characters.js) and items (items.js) are rendered by the shaded renderer in
-// rig.js; the environment sprites below are ASCII pixel art (h rows of w palette chars, '.' = transparent).
+// rig.js; environment props (fire, vent, rubble, checkpoint) are painted in props.js; the sprites below are
+// ASCII pixel art (h rows of w palette chars, '.' = transparent).
 // Everything is drawn at 2x density and shown at ART_SCALE = 0.5 (1 texture pixel = 1 screen pixel).
 // Side-view characters face RIGHT (code flips them with setFlipX). `body` = physics body size in texture
 // pixels when the frame is wider than the hitbox. Style reference: art/reference/*.webp
 import { CHARACTER_SPRITES, CHARACTER_ANIMS } from './characters.js';
 import { ITEM_SPRITES } from './items.js';
+import { PROP_SPRITES, PROP_ANIMS } from './props.js';
+import { FLIGHT_SPRITES } from './flightProps.js';
 
 // Build a w x h frame from a function (x, y) => palette char.
 const grid = (w, h, fn) => Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => fn(x, y)).join(''));
 // Small deterministic noise for texture speckles.
 const hash = (x, y) => (((x * 73856093) ^ (y * 19349663)) >>> 0) % 1000;
-
-// Ground flame 20x20.
-const flame = (phase) => grid(20, 20, (x, y) => {
-  const cx = 9.5 + Math.sin(y * 0.6 + phase * 2.5) * (1 - y / 20) * 2;
-  const half = Math.max(0, (y - 1) / 19) * 8.5;
-  const dx = Math.abs(x - cx);
-  if (dx > half || (y < 8 && hash(x + phase * 3, y) % 4 === 0)) return '.';
-  const inner = half - dx;
-  if (y > 11 && inner > 4.5) return 'Q';
-  if (inner > 3) return 'F';
-  if (inner > 1.2) return 'O';
-  return 'o';
-});
-
-// Fire vent column 24x64: jagged flame, widest at the base.
-const ventFrame = () => grid(24, 64, (x, y) => {
-  const half = Math.min(12, 2 + y / 4.5) - ((y >> 1) % 4 === 1 ? 1.5 : 0);
-  const d = Math.abs(x - 11.5 + Math.sin(y * 0.35) * 1.5);
-  if (d > half) return '.';
-  if (d > half - 1.5) return 'o';
-  if (d > half - 4) return 'O';
-  if (y > 28 && d < half - 6) return 'Q';
-  return 'F';
-});
 
 // Cave mouth 56x52: rocky rim around a dark arch.
 const caveFrame = () => grid(56, 52, (x, y) => {
@@ -72,8 +51,8 @@ const ledge = (light, mid, dark, cracked) => grid(32, 12, (x, y) => {
 export const SPRITES = {
   ...CHARACTER_SPRITES,
   ...ITEM_SPRITES,
-  flame: { w: 20, h: 20, frames: [flame(0), flame(1)] },
-  vent: { w: 24, h: 64, frames: [ventFrame()] },
+  ...PROP_SPRITES,
+  ...FLIGHT_SPRITES,
   cave: { w: 56, h: 52, frames: [caveFrame()] },
   rock: { w: 28, h: 20, frames: [rockFrame()] },
   ledge: { w: 32, h: 12, frames: [ledge('Z', 'X', 'x', false)] },
@@ -85,7 +64,7 @@ export const ANIMS = [
   ...CHARACTER_ANIMS,
   ['halo-shine', 'halo', [0, 0, 0, 1], 6, -1],
   ['fireball-flicker', 'fireball', [0, 1], 8, -1],
-  ['flame-flicker', 'flame', [0, 1], 6, -1],
+  ...PROP_ANIMS,
 ];
 
 // Physics body of a character: `body` size, feet on the bottom of the frame, centered on the hip (cx).

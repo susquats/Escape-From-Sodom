@@ -33,7 +33,7 @@ export default class TitleScene extends Phaser.Scene {
     // Flames on rooftops
     const flameXs = [18, 72, 122, 188, 228, 272];
     for (let i = 0; i < flameXs.length; i++) {
-      const f = this.add.image(flameXs[i], GROUND_Y - 2, 'flame').setScale(ART_SCALE).setDepth(0);
+      const f = this.add.sprite(flameXs[i], GROUND_Y - 2, 'flame').setScale(ART_SCALE).setDepth(0).play({ key: 'flame-flicker', startFrame: i % 4 });
       this.tweens.add({ targets: f, scaleY: (0.55 + (i % 3) * 0.15) * ART_SCALE, duration: 120 + i * 35, yoyo: true, repeat: -1 });
     }
 

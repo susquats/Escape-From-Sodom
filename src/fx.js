@@ -1,4 +1,4 @@
-import { spendLife, resetRun } from './runState.js';
+import { run, spendLife, resetRun, restoreCheckpoint } from './runState.js';
 // Call when Lot dies: spends a family life (or ends the run) and announces it. The next member
 // (wife, then daughters) turns red and dies if a family is passed; play continues where it is.
 // Returns { gameOver, name }; on gameOver the caller sends the player back to the title.
@@ -17,15 +17,17 @@ export function loseLife(scene, family = null) {
 // Lot died where the wall of destruction can still claim someone: the next family member
 // (wife, then daughters) turns to salt instead of dying. Touching the salt rescues them; only
 // if the wall (or a pit) destroys the salt is the life lost. Returns true on game over
-// (nobody left to turn to salt), in which case the run is reset.
+// (nobody left to turn to salt): the family as it was at the checkpoint is restored and Act I restarts at the last checkpoint,
+// or the whole run resets if none was reached.
 export function saltLife(scene, family) {
   const m = family.members.find(k => ['following', 'rejoining', 'lookingBack'].includes(k.state));
   const gameOver = !m;
   const label = m && m.memberName.replace('daughter', 'Daughter ').replace('wife', 'Wife');
-  const msg = gameOver ? 'GAME OVER\nThe family is gone. Starting over.' : `Lot fell. ${label} turns to salt!\nTouch the salt to rescue.`;
+  const hasCp = run.checkpointX !== null;
+  const msg = gameOver ? `GAME OVER\nThe family is gone. ${hasCp ? 'Back to the checkpoint.' : 'Starting over.'}` : `Lot fell. ${label} turns to salt!\nTouch the salt to rescue.`;
   const t = scene.add.text(160, 40, msg, { fontFamily: 'monospace', fontSize: '8px', color: gameOver ? '#ff5a5a' : '#ffe14a',
     stroke: '#000', strokeThickness: 2, align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(950);
-  if (gameOver) resetRun();
+  if (gameOver) { if (hasCp) restoreCheckpoint(); else resetRun(); }
   else {
     scene.tweens.add({ targets: t, alpha: 0, delay: 1500, duration: 500, onComplete: () => t.destroy() });
     m.saltify(true);

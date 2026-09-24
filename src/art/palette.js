@@ -93,3 +93,17 @@ export const RAMPS = {
   label: ['#8a6a3a', '#c4a468', '#ecd49a', '#fbecc4', '#fffbea'],
   fire: ['#7a1408', '#c8300c', '#f47418', '#ffc03a', '#fff4b0'],
 };
+
+// Environment ramps (index 0 = outline/mortar ... last = brightest highlight), picked from the Sodom panel of
+// art/reference/style-sheet.webp: warm sandstone lit by fire, dark maroon back walls, fire-lit sky.
+export const ENV = {
+  sand: ['#1e080a', '#4e1c16', '#7e3820', '#a8582c', '#c8783c', '#e29c54', '#f6c67e'],
+  stone: ['#1e080a', '#5a2c1c', '#8e5230', '#bc7c48', '#daa062', '#f0c282', '#fde8b4'],
+  wall: ['#1a0c10', '#4e2c26', '#7a4e3c', '#a0704e', '#c09062', '#dab27c', '#f2d49c'],
+  dark: ['#0c0408', '#1e0a14', '#2c0f1e', '#3c1628', '#542036', '#743044', '#9a4a50'],
+  darkWarm: ['#120406', '#2c0a10', '#431018', '#5c1a1e', '#7c2826', '#a23c2e', '#cc6038'],
+  wood: ['#1e0a06', '#4a2410', '#703a18', '#965424', '#b87434'],
+  cloth: ['#4a0a10', '#861a1a', '#bc2e24', '#e05034'],
+  linen: ['#6a4a36', '#a88a64', '#d8c09a', '#f4e6c4'],
+  glow: ['#1c0406', '#4a0a0a', '#8e1e10', '#d44818', '#ff8c28', '#ffc850', '#fff2b0'],
+};

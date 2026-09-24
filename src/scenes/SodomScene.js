@@ -12,10 +12,13 @@ import Halo from '../objects/Halo.js';
 import Checkpoint from '../objects/Checkpoint.js';
 import AngelBoost from '../objects/AngelBoost.js';
 import FamilyHud from '../ui/FamilyHud.js';
-import { run, resetRun } from '../runState.js';
+import { run, resetRun, saveCheckpoint } from '../runState.js';
 import { popText, saltLife } from '../fx.js';
 import { SODOM_SECTIONS } from '../levels/sodom.js';
-import { parseLevel, ROWS, SOLID, ONE_WAY } from '../levels/parseLevel.js';
+import { parseLevel, ROWS, SOLID, ONE_WAY, TILE_CHARS } from '../levels/parseLevel.js';
+import { hash } from '../art/pix.js';
+import { buildSodomTiles } from '../art/sodomTiles.js';
+import { buildSodomBackdrop, CLOUD_W, FAR_W, MID_W } from '../art/sodomBackdrop.js';
 import { setupView, fadeIn, fadeOut, shake, setViewX, setViewY, viewX, viewY, ART_SCALE } from '../view.js';
 
 const LEVEL = parseLevel(SODOM_SECTIONS);
@@ -25,6 +28,7 @@ const STREET_TOP = 17 * TILE; // y of the normal street surface
 const CAM_BOTTOM = 20 * TILE; // the camera never scrolls below this (saves screen on plain ground)
 const CHASM_COLS = 6;
 let cpDebugApplied = false;
+let tileArt = null; // Act I tileset + layer grids (src/art/sodomTiles.js)
 
 export default class SodomScene extends Phaser.Scene {
   constructor() {
@@ -44,7 +48,7 @@ export default class SodomScene extends Phaser.Scene {
     if (!cpDebugApplied) {
       cpDebugApplied = true;
       if (START_CP > 0 && run.checkpointX === null && cps[START_CP - 1]) {
-        run.checkpointX = cps[START_CP - 1].col * TILE + TILE / 2;
+        saveCheckpoint(cps[START_CP - 1].col * TILE + TILE / 2);
       }
     }
     const cpX = run.checkpointX;
@@ -60,6 +64,7 @@ export default class SodomScene extends Phaser.Scene {
       : cps.find(e => cx(e) === cpX) || LEVEL.entities.find(e => e.type === 'lot');
     this.lot = new Lot(this, cx(spawn), feetY(spawn) - 10);
     this.physics.add.collider(this.lot, this.terrain);
+    this.buildPitFloors();
 
     this.trail = new Trail(this.lot.x, feetY(spawn), FAMILY.trailMaxLength);
     this.family = new Family(this, this.trail, this.terrain);
@@ -205,7 +210,7 @@ export default class SodomScene extends Phaser.Scene {
     this.tweens.add({ targets: lot, y: lot.y - 24, duration: 150, ease: 'Quad.out', onComplete: () => {
       this.tweens.add({ targets: lot, y: lot.y + 200, angle: 360, duration: 550, ease: 'Quad.in' });
     } });
-    this.time.delayedCall(800, () => this.scene.start('TitleScene'));
+    this.time.delayedCall(800, () => (run.checkpointX !== null ? this.scene.restart() : this.scene.start('TitleScene')));
   }
 
   // brief invulnerability after a sacrifice (also makes enemies bonk off Lot)
@@ -264,34 +269,114 @@ export default class SodomScene extends Phaser.Scene {
   }
 
   buildChasm() {
-    const x0 = (LEVEL.cols - CHASM_COLS) * TILE, top = STREET_TOP + 8;
-    this.add.rectangle(x0, top, WORLD_W - x0, WORLD_H - top, 0x3a0808).setOrigin(0).setDepth(-0.8);
-    for (let i = 0; i < CHASM_COLS; i++) {
-      const f = this.add.image(x0 + 8 + i * 16 + Phaser.Math.Between(-3, 3), top, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-0.7);
-      this.tweens.add({ targets: f, scaleY: 0.6 * ART_SCALE, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
+    const x0 = (LEVEL.cols - CHASM_COLS) * TILE;
+    this.pitFire(x0, WORLD_W - x0);
+  }
+
+  // Fire light and flames at the bottom of a pit (x .. x + w). The camera never shows below CAM_BOTTOM.
+  pitFire(x, w) {
+    this.add.rectangle(x, CAM_BOTTOM - 8, w, WORLD_H - CAM_BOTTOM + 8, 0xff8c28).setOrigin(0).setDepth(-0.8);
+    this.add.tileSprite(x, CAM_BOTTOM - 40, w * 2, 64, 'pitglow').setScale(ART_SCALE).setOrigin(0).setDepth(-0.8);
+    for (let fx = x + 6; fx < x + w; fx += 12) {
+      const f = this.add.sprite(fx + Phaser.Math.Between(-2, 2), CAM_BOTTOM + 2, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-0.7)
+        .play({ key: 'flame-flicker', startFrame: Phaser.Math.Between(0, 3) });
+      this.tweens.add({ targets: f, scaleY: Phaser.Math.FloatBetween(1.2, 1.6) * ART_SCALE, duration: Phaser.Math.Between(180, 320), yoyo: true, repeat: -1 });
+    }
+  }
+
+  // Scenery with no gameplay. Fire stays off walkable ground so it never reads as a hazard: flames flicker in
+  // windows, blazes burn on ruined wall tops and in every pit; rubble lies along the street.
+  decorate(backMask) {
+    const at = (c, r) => (r < 0 || r >= ROWS || c < 0 || c >= LEVEL.cols ? -1 : LEVEL.data[r][c]);
+    const solidAt = (c, r) => SOLID.includes(at(c, r));
+    const nearEntity = (c) => LEVEL.entities.some(e => Math.abs(e.col - c) <= 2);
+    const rnd = (c, r, s) => hash(c, r, s);
+    const flame = (x, y, key, anim, depth) => this.add.sprite(x, y, key).setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(depth)
+      .play({ key: anim, startFrame: Phaser.Math.Between(0, 3) });
+
+    let pitStart = -1;
+    for (let c = 0; c <= LEVEL.cols; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const x = c * TILE + TILE / 2;
+        if (at(c, r) === TILE_CHARS.w && rnd(c, r, 1) < 0.6) flame(x, r * TILE + 13, 'flame_small', 'flame-small', -1.45);
+        // blaze behind a ruined wall top: its flat base sits below the deepest possible break (12 units) and the
+        // wall continues on both sides, so the wall always hides it
+        const wallTop = (k) => backMask[r]?.[k] && !backMask[r - 1]?.[k] && backMask[r + 1]?.[k];
+        if (wallTop(c) && wallTop(c - 1) && wallTop(c + 1) && rnd(c, r, 2) < 0.1) {
+          flame(x, r * TILE + 18, 'flame', 'flame-flicker', -1.55).setScale((1.7 + rnd(c, r, 7) * 0.5) * ART_SCALE);
+        }
+        if (r === STREET_TOP / TILE && at(c, r) === TILE_CHARS['#'] && !solidAt(c, r - 1) && backMask[r - 1]?.[c] && !nearEntity(c) && rnd(c, r, 3) < 0.16) {
+          this.add.image(x + rnd(c, r, 4) * 6 - 3, r * TILE + 1, 'rubble', Math.floor(rnd(c, r, 5) * 3)).setScale(ART_SCALE)
+            .setOrigin(0.5, 1).setFlipX(rnd(c, r, 6) < 0.5).setDepth(-0.95);
+        }
+      }
+      // pits: columns with no ground at the street, before the chasm
+      const pit = c < LEVEL.cols - CHASM_COLS && at(c, ROWS - 1) < 0 && !solidAt(c, ROWS - 1);
+      if (pit && pitStart < 0) pitStart = c;
+      if (!pit && pitStart >= 0) { this.pitFire(pitStart * TILE, (c - pitStart) * TILE); pitStart = -1; }
     }
   }
 
   buildBackground() {
-    this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x2b1b3a).setOrigin(0).setScrollFactor(0).setDepth(-3);
-    // skyline glued to the bottom of the screen; only scrolls sideways
-    const layers = [[0.3, 0x3d2a52, 40, 110], [0.6, 0x4f3466, 30, 80]];
-    layers.forEach(([factor, color, minH, maxH], i) => {
-      for (let x = 0; x < WORLD_W * factor + GAME_WIDTH; x += 48) {
-        const h = minH + ((x * 37 + i * 91) % (maxH - minH));
-        this.add.rectangle(x, GAME_HEIGHT - 20, 36, h, color).setOrigin(0, 1)
-          .setScrollFactor(factor, 0).setDepth(-2 + i * 0.5);
+    buildSodomBackdrop(this);
+    this.add.image(0, 0, 'sodom-sky').setOrigin(0).setScale(ART_SCALE).setScrollFactor(0).setDepth(-3);
+    // [texture, width px, scroll x, scroll y, y at the top of the level, depth]; bottoms stay below the
+    // screen at the lowest camera position (view y 140)
+    const layers = [
+      ['sodom-clouds', CLOUD_W, 0.05, 0.02, 0, -2.9],
+      ['sodom-far', FAR_W, 0.15, 0.1, 74, -2.6],
+      ['sodom-mid', MID_W, 0.35, 0.3, 82, -2.2],
+    ];
+    for (const [key, w, fx, fy, y, depth] of layers) {
+      const tw = w * ART_SCALE;
+      for (let x = 0; x < WORLD_W * fx + GAME_WIDTH + tw; x += tw) {
+        this.add.image(x, y, key).setOrigin(0).setScale(ART_SCALE).setScrollFactor(fx, fy).setDepth(depth);
       }
-    });
+    }
   }
 
   buildTerrain() {
+    // collision: the plain 16px map, not drawn
     const map = this.make.tilemap({ data: LEVEL.data, tileWidth: TILE, tileHeight: TILE });
     const tileset = map.addTilesetImage('tiles', 'tiles', TILE, TILE, 0, 0);
-    const layer = map.createLayer(0, tileset, 0, 0).setDepth(-1);
+    const layer = map.createLayer(0, tileset, 0, 0).setVisible(false);
     layer.setCollision(SOLID);
     layer.forEachTile(t => { if (t.index === ONE_WAY) t.setCollision(false, false, true, false); });
     this.terrain = layer;
+
+    // visuals: autotiled 2x art (src/art/sodomTiles.js), a back-wall layer behind a front layer
+    // painted once per page load (~100ms); restarts reuse the texture
+    if (!tileArt || !this.textures.exists(tileArt.key)) tileArt = buildSodomTiles(this, LEVEL.data);
+    const art = tileArt;
+    [[art.back, -1.5], [art.front, -1]].forEach(([data, depth]) => {
+      const m = this.make.tilemap({ data, tileWidth: TILE * 2, tileHeight: TILE * 2 });
+      const ts = m.addTilesetImage(art.key, art.key, TILE * 2, TILE * 2, 1, 2);
+      m.createLayer(0, ts, 0, 0).setScale(ART_SCALE).setDepth(depth);
+    });
+    this.decorate(art.backMask);
+  }
+
+  // invisible floors across every bottomless pit, solid only while the angels carry Lot
+  buildPitFloors() {
+    const data = LEVEL.data, last = ROWS - 1;
+    const solid = (r, c) => SOLID.includes(data[r][c]);
+    const surface = (c) => { let r = last; while (r > 0 && solid(r - 1, c)) r--; return r; };
+    this.pitFloors = this.physics.add.staticGroup();
+    for (let c = 0; c < LEVEL.cols; c++) {
+      if (solid(last, c)) continue;
+      let end = c;
+      while (end + 1 < LEVEL.cols && !solid(last, end + 1)) end++;
+      if (c > 0 && end + 1 < LEVEL.cols) {
+        const row = Math.min(surface(c - 1), surface(end + 1));
+        const w = (end - c + 1) * TILE;
+        const z = this.add.zone(c * TILE + w / 2, row * TILE + TILE / 2, w, TILE);
+        this.physics.add.existing(z, true);
+        z.body.checkCollision.down = z.body.checkCollision.left = z.body.checkCollision.right = false;
+        this.pitFloors.add(z);
+      }
+      c = end;
+    }
+    this.physics.add.collider(this.lot, this.pitFloors, null, () => this.boost.timer > 0);
   }
 
   update(time, delta) {
@@ -328,7 +413,7 @@ export default class SodomScene extends Phaser.Scene {
     if (this.lot.onGround && this.lot.body.left > this.destruction.x + 40) this.lastSafe = { x: this.lot.x, y: this.lot.y };
 
     for (const cp of this.checkpoints) {
-      if (!cp.active && this.lot.x > cp.x) { cp.activate(this); run.checkpointX = cp.x; }
+      if (!cp.active && this.lot.x > cp.x) { cp.activate(this); saveCheckpoint(cp.x); }
     }
 
     if (this.debugText) {
