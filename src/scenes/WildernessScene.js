@@ -5,6 +5,7 @@ import Controls from '../input/Controls.js';
 import Trail from '../objects/Trail.js';
 import Family from '../objects/Family.js';
 import FamilyHud from '../ui/FamilyHud.js';
+import { setupView, fadeIn, fadeOut, setViewX, ART_SCALE } from '../view.js';
 
 const WORLD_W = 1600;
 const WORLD_H = 180;
@@ -16,6 +17,7 @@ export default class WildernessScene extends Phaser.Scene {
   }
 
   create() {
+    setupView(this);
     this.physics.world.gravity.y = MOVE.gravity;
     this.exiting = false;
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
@@ -39,8 +41,8 @@ export default class WildernessScene extends Phaser.Scene {
     cam.startFollow(this.lot, true, 0.12, 0.12);
     cam.setDeadzone(40, 30);
     cam.setFollowOffset(-30, 0);
-    cam.scrollX = 0;
-    cam.fadeIn(400);
+    setViewX(cam, 0);
+    fadeIn(this, 400);
 
     this.controls = new Controls(this);
 
@@ -65,8 +67,8 @@ export default class WildernessScene extends Phaser.Scene {
     [[4, 30, 22], [30, 48, 16], [52, 26, 20], [76, 56, 18], [100, 36, 24], [128, 44, 16], [150, 28, 22], [176, 40, 18]]
       .forEach(([x, h, w]) => this.add.rectangle(x, gy, w, h, 0x4a1414).setOrigin(0, 1).setScrollFactor(0.2).setDepth(-2.5));
     [20, 88, 150].forEach(x => {
-      const f = this.add.image(x, gy - 34, 'flame').setOrigin(0.5, 1).setScrollFactor(0.2).setDepth(-2.4);
-      this.tweens.add({ targets: f, scaleY: 0.6, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
+      const f = this.add.image(x, gy - 34, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setScrollFactor(0.2).setDepth(-2.4);
+      this.tweens.add({ targets: f, scaleY: 0.6 * ART_SCALE, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
     });
 
     // the mountain grows into view on the right
@@ -78,7 +80,7 @@ export default class WildernessScene extends Phaser.Scene {
 
     // decorations (no bodies)
     for (let x = 90; x < WORLD_W; x += 150) {
-      this.add.image(x + (x * 7) % 40, gy, 'rock').setOrigin(0.5, 1).setDepth(-1);
+      this.add.image(x + (x * 7) % 40, gy, 'rock').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-1);
     }
     for (let x = 60; x < WORLD_W; x += 110) {
       this.add.rectangle(x + (x * 13) % 50, gy, 5, 5 + (x % 4), 0x6a5a2a).setOrigin(0.5, 1).setDepth(-1);
@@ -107,7 +109,7 @@ export default class WildernessScene extends Phaser.Scene {
     solid(74, STREET, 26);
     // 1-tile rocks
     [[26, STREET - 1], [58, STREET]].forEach(([tx, ty]) => {
-      const r = this.add.image(tx * TILE + TILE / 2, ty * TILE, 'rock').setOrigin(0.5, 1).setDepth(-0.2);
+      const r = this.add.image(tx * TILE + TILE / 2, ty * TILE, 'rock').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-0.2);
       this.terrain.add(r);
     });
   }
@@ -121,8 +123,7 @@ export default class WildernessScene extends Phaser.Scene {
     family.members[0].cancelLook();
     this.time.delayedCall(300, () => {
       const cam = this.cameras.main;
-      cam.fadeOut(500);
-      cam.once('camerafadeoutcomplete', () => this.scene.start('MountainScene'));
+      fadeOut(this, 500, () => this.scene.start('MountainScene'));
     });
   }
 

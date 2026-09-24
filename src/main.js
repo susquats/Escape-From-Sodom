@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
-import { GAME_WIDTH, GAME_HEIGHT, MOVE, DEBUG } from './config.js';
+import { GAME_WIDTH, GAME_HEIGHT, ZOOM, MOVE, DEBUG } from './config.js';
 import BootScene from './scenes/BootScene.js';
 import TitleScene from './scenes/TitleScene.js';
 import SodomScene from './scenes/SodomScene.js';
@@ -16,8 +16,8 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
+  width: GAME_WIDTH * ZOOM,
+  height: GAME_HEIGHT * ZOOM,
   backgroundColor: '#2b1b3a',
   pixelArt: true,
   roundPixels: true,

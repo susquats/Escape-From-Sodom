@@ -1,9 +1,10 @@
+import { ART_SCALE } from '../view.js';
 export default class FamilyHud {
   constructor(scene, family) {
     this.scene = scene;
     this.family = family;
     this.icons = family.members.map((m, i) => {
-      const icon = scene.add.image(6 + i * 12, 6, m.memberName).setOrigin(0).setScale(0.5)
+      const icon = scene.add.image(6 + i * 12, 6, m.memberName).setOrigin(0).setScale(0.5 * ART_SCALE)
         .setScrollFactor(0).setDepth(960);
       const x = scene.add.image(6 + i * 12 + 2, 6 + 2, 'x').setOrigin(0).setScrollFactor(0)
         .setDepth(961).setVisible(false);

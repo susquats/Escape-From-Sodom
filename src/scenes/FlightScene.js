@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, DEBUG, FLIGHT } from '../config.js';
 import Carrier from '../objects/Carrier.js';
+import { COMET_HEAD } from '../art/items.js';
 import Controls from '../input/Controls.js';
 import { popText, puff, loseLife } from '../fx.js';
+import { setupView, fadeIn, fadeOut, shake, flash, ART_SCALE } from '../view.js';
 
 // Seconds after the first flap; obstacles spawn at x = GAME_WIDTH + 20.
 const SCRIPT = [
@@ -25,11 +27,13 @@ export default class FlightScene extends Phaser.Scene {
   }
 
   create() {
+    setupView(this);
     this.physics.world.gravity.y = FLIGHT.gravity;
     this.started = false;
     this.elapsed = 0;
     this.scriptIndex = 0;
     this.dead = false;
+    this.graceUntil = 0;
     this.landing = false;
     this.tapQueued = false;
     this.scrollMul = 1;
@@ -42,7 +46,7 @@ export default class FlightScene extends Phaser.Scene {
         const h = minH + ((x * 37 + i * 91) % (maxH - minH));
         items.push(this.add.rectangle(x, GAME_HEIGHT - 20, 36, h, color).setOrigin(0, 1).setDepth(-2 + i * 0.5));
         if ((x / 48 + i) % 2 === 0) {
-          items.push(this.add.image(x + 18, GAME_HEIGHT - 20 - h, 'flame').setOrigin(0.5, 1).setDepth(-1.9 + i * 0.5));
+          items.push(this.add.image(x + 18, GAME_HEIGHT - 20 - h, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-1.9 + i * 0.5));
         }
       }
       return { factor, items, span: Math.ceil((GAME_WIDTH + 96) / 48) * 48 };
@@ -59,7 +63,7 @@ export default class FlightScene extends Phaser.Scene {
     this.tweens.add({ targets: this.title, alpha: 0, delay: 1500, duration: 500 });
     this.hint = this.add.text(GAME_WIDTH / 2, 120, 'TAP or SPACE to flap', STROKE).setOrigin(0.5).setDepth(900);
 
-    this.cameras.main.fadeIn(400);
+    fadeIn(this, 400);
 
     if (DEBUG) {
       this.debugText = this.add.text(4, 20, '', { fontFamily: 'monospace', fontSize: '8px', color: '#0f0' }).setDepth(900);
@@ -83,7 +87,7 @@ export default class FlightScene extends Phaser.Scene {
     const edge = this.add.rectangle(x, top, w, 2, 0x6a4a22).setOrigin(0.5, 0).setDepth(6);
     this.addBody(edge);
     for (let i = -1; i <= 1; i++) {
-      const f = this.add.image(x + i * 8, top, 'flame').setOrigin(0.5, 1).setDepth(6);
+      const f = this.add.image(x + i * 8, top, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(6);
       this.addBody(f);
     }
   }
@@ -100,24 +104,33 @@ export default class FlightScene extends Phaser.Scene {
   }
 
   fireball(y) {
-    const f = this.add.image(GAME_WIDTH + 20, y, 'fireball').setDepth(6);
+    // comet flying left: pivot on its head, tail streaming behind (the sprite points down-right)
+    const f = this.add.sprite(GAME_WIDTH + 20, y, 'fireball').setScale(ART_SCALE).setDepth(6)
+      .setOrigin(COMET_HEAD.x / 32, COMET_HEAD.y / 32).setRotation(Math.PI * 0.75).play('fireball-flicker');
     this.addBody(f);
+    f.body.setCircle(COMET_HEAD.r, COMET_HEAD.x - COMET_HEAD.r, COMET_HEAD.y - COMET_HEAD.r);
     f.body.setVelocityX(-(FLIGHT.scrollSpeed + 60));
-    this.tweens.add({ targets: f, angle: 360, duration: 500, repeat: -1 });
   }
 
   spawn(e) { this[e.type](e.top ?? e.bottom ?? e.gapY ?? e.y); }
 
   crash() {
-    if (this.dead || this.invincible || this.landing) return;
+    if (this.dead || this.invincible || this.landing || this.graceUntil > this.time.now) return;
+    shake(this, 200, 0.01);
+    flash(this, 100, 255, 80, 40);
+    const { gameOver, name } = loseLife(this);
+    if (!gameOver) {
+      // a family member is lost in Lot's place; the flight goes on
+      this.carrier.sacrifice(name);
+      this.graceUntil = this.time.now + 1500;
+      this.tweens.add({ targets: this.carrier.view, alpha: 0.3, duration: 80, yoyo: true, repeat: 8,
+        onComplete: () => this.carrier.view.setAlpha(1) });
+      return;
+    }
     this.dead = true;
     this.physics.pause();
-    const cam = this.cameras.main;
-    cam.shake(200, 0.01);
-    cam.flash(100, 255, 80, 40);
     this.carrier.crash();
-    const next = loseLife(this);
-    this.time.delayedCall(900, () => this.scene.start(next));
+    this.time.delayedCall(900, () => this.scene.start('TitleScene'));
   }
 
   scrollBackground(delta) {
@@ -190,23 +203,23 @@ export default class FlightScene extends Phaser.Scene {
     people.forEach((p, i) => {
       p.setOrigin(0.5, 0.5);
       p.rotation = 0;
-      const targetY = GROUND_Y - v.y - p.height / 2;
+      const targetY = GROUND_Y - v.y - p.displayHeight / 2;
       this.tweens.add({ targets: p, x: (i - (people.length - 1) / 2) * 14, y: targetY, angle: 90, duration: 350, ease: 'Quad.in',
         onComplete: () => {
           if (i !== 0) return;
-          this.cameras.main.shake(150, 0.008);
+          shake(this, 150, 0.008);
           popText(this, 160, 140, 'THUD!');
           people.forEach(q => puff(this, v.x + q.x, GROUND_Y - 2, 0xd9b774));
         } });
     });
     c.danglers.length = 0;
     this.time.delayedCall(1350, () => {
+      people.forEach(p => { p.anims.stop(); p.setFrame(0); }); // back on their feet
       this.tweens.add({ targets: people, angle: 0, duration: 150 });
     });
     this.time.delayedCall(2150, () => {
       const cam = this.cameras.main;
-      cam.fadeOut(500);
-      cam.once('camerafadeoutcomplete', () => this.scene.start('WildernessScene'));
+      fadeOut(this, 500, () => this.scene.start('WildernessScene'));
     });
   }
 }

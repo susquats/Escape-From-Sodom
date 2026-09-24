@@ -1,11 +1,17 @@
 import Phaser from 'phaser';
 import { MOVE, ANGEL } from '../config.js';
+import { ART_SCALE } from '../view.js';
+import { fitBody } from '../art/sprites.js';
+import { LOT_FRAMES } from '../art/characters.js';
 
 export default class Lot extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
     super(scene, x, y, 'lot');
+    this.setScale(ART_SCALE);
+    this.setOrigin(0.5, 1 - 20 / this.height); // keep x/y at the middle of the 40px-tall body, as before
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    fitBody(this, 'lot'); // the frame is bigger than the hitbox (room for arms, legs and hair)
 
     this.setCollideWorldBounds(true);
     this.body.setMaxVelocity(MOVE.runSpeed, MOVE.maxFallSpeed);
@@ -75,7 +81,7 @@ export default class Lot extends Phaser.Physics.Arcade.Sprite {
     const body = this.body;
     if (!this.onGround) {
       this.anims.stop();
-      this.setFrame(body.velocity.y < 0 ? 6 : 7);
+      this.setFrame(body.velocity.y < 0 ? LOT_FRAMES.jump : LOT_FRAMES.fall);
     } else if (Math.abs(body.velocity.x) > 10) {
       this.play('lot-run', true);
     } else {
@@ -85,6 +91,6 @@ export default class Lot extends Phaser.Physics.Arcade.Sprite {
 
   showDead() {
     this.anims.stop();
-    this.setFrame(8);
+    this.setFrame(LOT_FRAMES.dead);
   }
 }

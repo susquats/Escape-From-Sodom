@@ -13,9 +13,10 @@ import Checkpoint from '../objects/Checkpoint.js';
 import AngelBoost from '../objects/AngelBoost.js';
 import FamilyHud from '../ui/FamilyHud.js';
 import { run, resetRun } from '../runState.js';
-import { popText, loseLife } from '../fx.js';
+import { popText, saltLife } from '../fx.js';
 import { SODOM_SECTIONS } from '../levels/sodom.js';
 import { parseLevel, ROWS, SOLID, ONE_WAY } from '../levels/parseLevel.js';
+import { setupView, fadeIn, fadeOut, shake, setViewX, setViewY, viewX, viewY, ART_SCALE } from '../view.js';
 
 const LEVEL = parseLevel(SODOM_SECTIONS);
 const WORLD_W = LEVEL.cols * TILE;
@@ -31,6 +32,7 @@ export default class SodomScene extends Phaser.Scene {
   }
 
   create() {
+    setupView(this);
     this.physics.world.gravity.y = MOVE.gravity;
     this.cutscene = false;
     this.lifting = false;
@@ -110,7 +112,7 @@ export default class SodomScene extends Phaser.Scene {
     this.physics.add.overlap(this.sulfur.balls, this.enemies, (ball, e) => { if (e.alive) { e.burn(); ball.destroy(); } });
 
     // the way out: a halo by the wall calls the angels
-    this.gateHalo = new Halo(this, cx(gate), (gate.row + 1) * TILE - 14).setScale(1.5);
+    this.gateHalo = new Halo(this, cx(gate), (gate.row + 1) * TILE - 14).setScale(1.5 * ART_SCALE);
     this.physics.add.overlap(this.lot, this.gateHalo, (lot, h) => {
       if (!h.active || this.cutscene) return;
       h.collect();
@@ -130,9 +132,9 @@ export default class SodomScene extends Phaser.Scene {
     cam.setDeadzone(40, 30);
     cam.setFollowOffset(-30, 0);
     // start close to the spawn so there is no long pan
-    cam.scrollX = Phaser.Math.Clamp(this.lot.x - 130, 0, WORLD_W - GAME_WIDTH);
-    cam.scrollY = Phaser.Math.Clamp(this.lot.y - GAME_HEIGHT * 0.6, 0, CAM_BOTTOM - GAME_HEIGHT);
-    cam.fadeIn(400);
+    setViewX(cam, Phaser.Math.Clamp(this.lot.x - 130, 0, WORLD_W - GAME_WIDTH));
+    setViewY(cam, Phaser.Math.Clamp(this.lot.y - GAME_HEIGHT * 0.6, 0, CAM_BOTTOM - GAME_HEIGHT));
+    fadeIn(this, 400);
 
     this.controls = new Controls(this);
     this.restarting = false;
@@ -181,16 +183,37 @@ export default class SodomScene extends Phaser.Scene {
     if (this.cutscene) return;
     if (this.restarting) return;
     if (this.lot.protected && !force) return;
+    const lot = this.lot;
+    const gameOver = saltLife(this, this.family);
+    if (!gameOver) {
+      // a family member turned to salt in Lot's place: carry on from here
+      shake(this, 200, 0.01);
+      if (lot.y > WORLD_H + 40 && this.lastSafe) lot.setPosition(this.lastSafe.x, this.lastSafe.y);
+      if (lot.body.left < this.destruction.x) {
+        this.destruction.x = lot.body.left - 140;
+        this.destruction.delay = 1500;
+        this.destruction.place();
+      }
+      lot.body.setVelocity(0, 0);
+      this.grace(1500);
+      return;
+    }
     this.restarting = true;
     this.physics.pause();
-    const lot = this.lot;
     lot.setTint(0xff4040);
-    this.cameras.main.shake(200, 0.01);
+    shake(this, 200, 0.01);
     this.tweens.add({ targets: lot, y: lot.y - 24, duration: 150, ease: 'Quad.out', onComplete: () => {
       this.tweens.add({ targets: lot, y: lot.y + 200, angle: 360, duration: 550, ease: 'Quad.in' });
     } });
-    const next = loseLife(this);
-    this.time.delayedCall(800, () => this.scene.start(next));
+    this.time.delayedCall(800, () => this.scene.start('TitleScene'));
+  }
+
+  // brief invulnerability after a sacrifice (also makes enemies bonk off Lot)
+  grace(ms) {
+    const lot = this.lot;
+    lot.protected = true;
+    this.tweens.add({ targets: lot, alpha: 0.3, duration: 80, yoyo: true, repeat: Math.floor(ms / 160) - 1,
+      onComplete: () => { lot.setAlpha(1); if (this.boost.timer <= 0) lot.protected = false; } });
   }
 
   startPickup() {
@@ -210,12 +233,12 @@ export default class SodomScene extends Phaser.Scene {
     popText(this, lot.x, lot.y - 24, '!');
 
     this.time.delayedCall(500, () => {
-      const angels = [0, 1].map(() => this.add.image(cam.scrollX - 20, cam.scrollY - 20, 'angel').setDepth(700));
+      const angels = [0, 1].map(() => this.add.sprite(viewX(cam) - 20, viewY(cam) - 20, 'angel').setScale(ART_SCALE).setDepth(700).play('angel-flap'));
       const vis = () => family.members.filter(m => m.visible && m.state !== 'lost');
       const v = vis();
       const bx = v.length ? v.reduce((sum, m) => sum + m.x, 0) / v.length : lot.x - 30;
-      const by = v.length ? v[0].y - v[0].height - 22 : lot.y - lot.height - 6;
-      const targets = [{ x: lot.x, y: lot.y - lot.height - 6 }, { x: bx, y: by }];
+      const by = v.length ? v[0].y - v[0].displayHeight - 22 : lot.y - lot.displayHeight - 6;
+      const targets = [{ x: lot.x, y: lot.y - lot.displayHeight - 6 }, { x: bx, y: by }];
       popText(this, lot.x, lot.y - 30, 'HALLELUJAH!', '#ffe14a');
       angels.forEach((a, i) => {
         this.tweens.add({ targets: a, x: targets[i].x, y: targets[i].y, duration: 500,
@@ -229,13 +252,13 @@ export default class SodomScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.stopFollow();
     this.lot.body.enable = false;
+    [this.lot, ...members].forEach((m, i) => m.play({ key: `${m === this.lot ? 'lot' : m.memberName}-hang`, startFrame: i % 2 }));
     const targets = [this.lot, ...angels, ...members];
     targets.forEach((t, i) => {
       this.tweens.add({ targets: t, y: '-=220', x: '+=40', duration: 1400, ease: 'Sine.in',
         onComplete: () => {
           if (i !== 0) return;
-          cam.fadeOut(400);
-          cam.once('camerafadeoutcomplete', () => this.scene.start('FlightScene'));
+          fadeOut(this, 400, () => this.scene.start('FlightScene'));
         } });
     });
   }
@@ -244,8 +267,8 @@ export default class SodomScene extends Phaser.Scene {
     const x0 = (LEVEL.cols - CHASM_COLS) * TILE, top = STREET_TOP + 8;
     this.add.rectangle(x0, top, WORLD_W - x0, WORLD_H - top, 0x3a0808).setOrigin(0).setDepth(-0.8);
     for (let i = 0; i < CHASM_COLS; i++) {
-      const f = this.add.image(x0 + 8 + i * 16 + Phaser.Math.Between(-3, 3), top, 'flame').setOrigin(0.5, 1).setDepth(-0.7);
-      this.tweens.add({ targets: f, scaleY: 0.6, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
+      const f = this.add.image(x0 + 8 + i * 16 + Phaser.Math.Between(-3, 3), top, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-0.7);
+      this.tweens.add({ targets: f, scaleY: 0.6 * ART_SCALE, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
     }
   }
 
@@ -302,6 +325,7 @@ export default class SodomScene extends Phaser.Scene {
     if (this.lot.body.left < this.destruction.x) { this.killLot(true); return; }
 
     this.hud.update();
+    if (this.lot.onGround && this.lot.body.left > this.destruction.x + 40) this.lastSafe = { x: this.lot.x, y: this.lot.y };
 
     for (const cp of this.checkpoints) {
       if (!cp.active && this.lot.x > cp.x) { cp.activate(this); run.checkpointX = cp.x; }

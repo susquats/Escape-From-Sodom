@@ -1,12 +1,16 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SODOMITE } from '../config.js';
 import { popText, puff } from '../fx.js';
+import { viewX, ART_SCALE } from '../view.js';
+import { fitBody } from '../art/sprites.js';
 
 export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
     super(scene, x, y, 'sodomite');
+    this.setScale(ART_SCALE);
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    fitBody(this, 'sodomite');
     this.setCollideWorldBounds(true);
     this.setDepth(0.2);
     this.alive = true;
@@ -20,7 +24,7 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
     if (this.x < wallX) { this.burn(); return; }
     if (this.y > worldH + 40) { this.kill(); return; }
     if (!this.awake) {
-      if (this.x < cam.scrollX + GAME_WIDTH + SODOMITE.wakeMargin) this.awake = true;
+      if (this.x < viewX(cam) + GAME_WIDTH + SODOMITE.wakeMargin) this.awake = true;
       else { this.setVelocityX(0); return; }
     }
     this.play('sodomite-walk', true);
@@ -44,8 +48,8 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
     this.anims.stop();
     this.alive = false;
     this.body.enable = false;
-    this.setScale(1.3, 0.3);
-    this.y += this.height * 0.35;
+    this.y += this.displayHeight * 0.35;
+    this.setScale(1.3 * ART_SCALE, 0.3 * ART_SCALE);
     this.scene.time.delayedCall(SODOMITE.squashMs, () => {
       this.scene.tweens.add({ targets: this, alpha: 0, duration: 200, onComplete: () => this.setVisible(false) });
     });

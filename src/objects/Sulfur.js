@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { SULFUR } from '../config.js';
 import { puff } from '../fx.js';
+import { viewY, ART_SCALE } from '../view.js';
+import { COMET_HEAD } from '../art/items.js';
 
 export default class Sulfur {
   constructor(scene, terrain, worldW, worldH) {
@@ -22,14 +24,20 @@ export default class Sulfur {
       const progress = Phaser.Math.Clamp(lot.x / this.worldW, 0, 1);
       this.timer = Phaser.Math.Linear(SULFUR.startIntervalMs, SULFUR.endIntervalMs, progress);
       const x = Phaser.Math.Clamp(lot.x + Phaser.Math.Between(SULFUR.aheadMin, SULFUR.aheadMax), 8, this.worldW - 8);
-      this.warn(x);
+      this.warn(x, lot);
     }
     this.balls.getChildren().slice().forEach(b => { if (b.y > this.worldH + 20) b.destroy(); });
   }
 
-  warn(x) {
+  // x = where the comet should come down (at Lot's height). It enters from the top left, launched by the
+  // destruction; the marker blinks where it will cross the top of the screen.
+  warn(x, lot) {
     const cam = this.scene.cameras.main;
-    const m = this.scene.add.image(x, 6, 'warn').setScrollFactor(1, 0).setDepth(900);
+    const angle = SULFUR.angle + Phaser.Math.FloatBetween(-SULFUR.angleJitter, SULFUR.angleJitter);
+    const slope = Math.tan(Phaser.Math.DegToRad(angle)); // horizontal px per px of fall
+    const top = viewY(cam);
+    const entryX = x - (lot.y - top) * slope;
+    const m = this.scene.add.image(entryX, 6, 'warn').setScrollFactor(1, 0).setDepth(900);
     this.markers.push(m);
     const tw = this.scene.tweens.add({ targets: m, alpha: 0.2, duration: 100, yoyo: true, repeat: -1 });
     this.scene.time.delayedCall(SULFUR.warnMs, () => {
@@ -37,25 +45,32 @@ export default class Sulfur {
       if (!m.active) return;
       this.markers = this.markers.filter(k => k !== m);
       m.destroy();
-      if (!this.stopped) this.drop(x, cam.scrollY - 10);
+      if (!this.stopped) this.drop(entryX - 10 * slope, viewY(cam) - 10, slope);
     });
   }
 
-  drop(x, y) {
-    const b = this.balls.create(x, y, 'fireball').setDepth(500);
-    b.setVelocity(Phaser.Math.FloatBetween(-SULFUR.maxDrift, SULFUR.maxDrift), SULFUR.fallSpeed);
-    b.play('fireball-flicker'); // the sprite's flame tips point up, so no spinning
+  drop(x, y, slope) {
+    const b = this.balls.create(x, y, 'fireball').setScale(ART_SCALE).setDepth(500);
+    const vx = SULFUR.fallSpeed * slope, vy = SULFUR.fallSpeed;
+    // the comet sprite flies toward the bottom right with its head at COMET_HEAD: pivot on the head,
+    // turn it to the flight direction, and make the hitbox a circle around the head
+    b.setOrigin(COMET_HEAD.x / b.width, COMET_HEAD.y / b.height);
+    b.setRotation(Math.atan2(vy, vx) - Math.PI / 4);
+    b.body.setCircle(COMET_HEAD.r, COMET_HEAD.x - COMET_HEAD.r, COMET_HEAD.y - COMET_HEAD.r);
+    b.body.reset(x, y); // re-sync the body with the new origin
+    b.setVelocity(vx, vy);
+    b.play('fireball-flicker');
   }
 
   impact(ball) {
     if (!ball.active) return;
     const scene = this.scene;
     puff(scene, ball.x, ball.y, 0xff8a1e);
-    const f = this.flames.create(ball.x, ball.body.bottom, 'flame').setOrigin(0.5, 1).setDepth(500);
-    f.body.setSize(8, 8);
+    const f = this.flames.create(ball.x, ball.body.bottom, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(500);
+    f.body.setSize(16, 16); // texture pixels (= 8x8 world)
     f.body.reset(f.x, f.y);
     f.play('flame-flicker');
-    scene.tweens.add({ targets: f, scaleY: 1.3, duration: 120, yoyo: true, repeat: -1 });
+    scene.tweens.add({ targets: f, scaleY: 1.3 * ART_SCALE, duration: 120, yoyo: true, repeat: -1 });
     scene.tweens.add({ targets: f, alpha: 0, delay: SULFUR.flameMs - 300, duration: 300,
       onComplete: () => f.destroy() });
     scene.tweens.killTweensOf(ball);

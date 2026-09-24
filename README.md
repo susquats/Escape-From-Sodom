@@ -77,3 +77,12 @@ The game is now complete end-to-end:
 | Credits (3/3 score) | `?scene=credits` |
 
 **Customise credits:** edit `MADE_BY` in `src/credits.js`.
+
+## Art & 2x pixel density
+
+- The canvas is 640×360 (`ZOOM = 2` in `src/config.js`), but the world is still 320×180 units: all gameplay numbers are unchanged.
+- `src/view.js` sets up three cameras per scene (call `setupView(this)` first in every `create()`): `main` for the world, `bg` for skies/parallax (scroll factor < 1, depth < 0), and `ui` for HUD/text/buttons (scroll factor < 1, depth ≥ 0).
+- **Never use `cam.scrollX/scrollY` as the edge of the view**. Use `viewX/viewY/setViewX/setViewY` from `src/view.js`. Use its `fadeIn/fadeOut/flash/shake` helpers so the sky and UI fade with the world.
+- Characters and items use a 32-bit-style shaded renderer (`src/art/rig.js`): body parts are lit like 3D shapes, quantized into 5-tone color ramps (`RAMPS` in `src/art/palette.js`) and outlined. Characters (`src/art/characters.js`) are posed skeletons — tweak a pose's joint angles to change a frame; run cycles are 8 frames (the women's use bigger strides, a bounce and wind-blown skirts/hair). Family members show jump/fall frames where Lot was airborne, and everyone uses a hanging pose (`<name>-hang`) when the angels carry them. Items live in `src/art/items.js`. Environment sprites are still ASCII pixel art in `src/art/sprites.js`.
+- Everything is drawn at 2× size and shown with `setScale(ART_SCALE)` (0.5). Scale tweens must multiply by `ART_SCALE`. Character frames are wider than their hitboxes (Lot 32×40 frame, 24×40 body); the `body` size in the sprite table is applied by the objects.
+- Preview every sprite and animation at `?scene=art`. Style references are in `art/reference/`.

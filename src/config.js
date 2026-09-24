@@ -1,6 +1,7 @@
 export const GAME_WIDTH = 320;
 export const GAME_HEIGHT = 180;
 export const TILE = 16;
+export const ZOOM = 2; // canvas pixels per world unit (see src/view.js)
 
 // All movement tuning lives here (internal pixels, px/s).
 export const MOVE = {
@@ -44,8 +45,9 @@ export const SULFUR = {
   startIntervalMs: 2400, // at level start
   endIntervalMs: 900,    // near the city gate
   warnMs: 700,           // marker time before the drop
-  fallSpeed: 150,
-  maxDrift: 15,          // random horizontal px/s
+  fallSpeed: 150,        // vertical px/s
+  angle: 35,             // comets fly in from the top left, this many degrees from vertical
+  angleJitter: 6,        // random +- degrees
   aheadMin: -40,         // target x = lot.x + random(aheadMin, aheadMax)
   aheadMax: 170,
   flameMs: 1600,         // ground flame lifetime

@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { puff } from '../fx.js';
+import { ART_SCALE } from '../view.js';
 
 export default class Halo extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
     super(scene, x, y, 'halo');
+    this.setScale(ART_SCALE);
     scene.add.existing(this);
     scene.physics.add.existing(this, true);
     this.setDepth(0.3);

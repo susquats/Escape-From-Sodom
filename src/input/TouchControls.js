@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, ZOOM } from '../config.js';
 
 export default class TouchControls {
   constructor(scene, names = ['left', 'right', 'jump', 'restart']) {
@@ -52,7 +52,7 @@ export default class TouchControls {
       for (const p of this.scene.input.manager.pointers) {
         if (!p.isDown) continue;
         for (const [name, b] of Object.entries(this.buttons)) {
-          if (b.rect.contains(p.x, p.y)) state[name] = true;
+          if (b.rect.contains(p.x / ZOOM, p.y / ZOOM)) state[name] = true; // pointer is in canvas pixels
         }
       }
       for (const [name, b] of Object.entries(this.buttons)) b.img.setAlpha(state[name] ? 0.6 : 0.35);

@@ -4,6 +4,7 @@ import Lot from '../objects/Lot.js';
 import Controls from '../input/Controls.js';
 import { run } from '../runState.js';
 import { popText, puff, loseLife } from '../fx.js';
+import { setupView, fadeIn, fadeOut, shake, setViewY, viewY, ART_SCALE } from '../view.js';
 
 const STROKE = { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 };
 
@@ -13,9 +14,11 @@ export default class MountainScene extends Phaser.Scene {
   }
 
   create() {
+    setupView(this);
     this.physics.world.gravity.y = MOVE.gravity;
     const H = MOUNTAIN.height;
     this.dead = false;
+    this.graceMs = 0;
     this.atTop = false;
     this.invincible = false;
     this.elapsed = 0;
@@ -36,8 +39,8 @@ export default class MountainScene extends Phaser.Scene {
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, GAME_WIDTH, H);
-    cam.scrollY = H - GAME_HEIGHT;
-    cam.fadeIn(400);
+    setViewY(cam, H - GAME_HEIGHT);
+    fadeIn(this, 400);
 
     const title = this.add.text(GAME_WIDTH / 2, 40, 'ACT III\nTHE MOUNTAIN', { ...STROKE, fontSize: '12px' })
       .setOrigin(0.5).setAlign('center').setScrollFactor(0).setDepth(900);
@@ -66,13 +69,13 @@ export default class MountainScene extends Phaser.Scene {
     this.add.rectangle(0, 0, L, H, 0x4a3a2e).setOrigin(0).setDepth(-2);
     this.add.rectangle(R, 0, GAME_WIDTH - R, H, 0x4a3a2e).setOrigin(0).setDepth(-2);
     for (let y = 10; y < H; y += 26) {
-      this.add.image(6 + (y * 7) % 36, y, 'rock').setDepth(-1.9);
-      this.add.image(R + 6 + (y * 11) % 36, y + 12, 'rock').setDepth(-1.9);
+      this.add.image(6 + (y * 7) % 36, y, 'rock').setScale(ART_SCALE).setDepth(-1.9);
+      this.add.image(R + 6 + (y * 11) % 36, y + 12, 'rock').setScale(ART_SCALE).setDepth(-1.9);
     }
   }
 
   makePlatform(x, y, w, type) {
-    const p = this.add.tileSprite(x, y, w, 6, type === 'crumble' ? 'ledge_crumble' : 'ledge');
+    const p = this.add.tileSprite(x, y, w, 6, type === 'crumble' ? 'ledge_crumble' : 'ledge').setTileScale(ART_SCALE);
     if (type === 'moving') {
       this.movers.add(p);
     } else {
@@ -113,7 +116,7 @@ export default class MountainScene extends Phaser.Scene {
       prevX = x;
     }
     this.makePlatform(160, M.topY, 208, 'top');
-    this.cave = this.add.image(230, M.topY - 3, 'cave').setOrigin(0.5, 1).setDepth(-1);
+    this.cave = this.add.image(230, M.topY - 3, 'cave').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-1);
   }
 
   landOn(p) {
@@ -121,7 +124,7 @@ export default class MountainScene extends Phaser.Scene {
     if (p.kind === 'top') { this.reachTop(); return; }
     const lot = this.lot;
     lot.body.setVelocityY(-MOUNTAIN.bounceVelocity);
-    this.tweens.add({ targets: lot, scaleX: 1.2, scaleY: 0.8, duration: 80, yoyo: true });
+    this.tweens.add({ targets: lot, scaleX: 1.2 * ART_SCALE, scaleY: 0.8 * ART_SCALE, duration: 80, yoyo: true });
     if (p.kind === 'crumble') {
       puff(this, p.x, p.y, 0x8a7a6a);
       p.body.enable = false;
@@ -142,18 +145,23 @@ export default class MountainScene extends Phaser.Scene {
     this.tweens.add({ targets: lot, y: lot.y - 1, duration: 110, yoyo: true, repeat: 3 });
     this.time.delayedCall(900, () => this.tweens.add({ targets: lot, alpha: 0, duration: 300 }));
     this.time.delayedCall(1700, () => {
-      this.cameras.main.fadeOut(500);
-      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('EndingScene'));
+      fadeOut(this, 500, () => this.scene.start('EndingScene'));
     });
   }
 
   die() {
-    this.dead = true;
     const cam = this.cameras.main;
-    popText(this, this.lot.x, cam.scrollY + GAME_HEIGHT - 10, 'AAAAH!');
-    cam.shake(200, 0.01);
-    const next = loseLife(this);
-    this.time.delayedCall(700, () => this.scene.start(next));
+    popText(this, this.lot.x, viewY(cam) + GAME_HEIGHT - 10, 'AAAAH!');
+    shake(this, 200, 0.01);
+    const { gameOver } = loseLife(this);
+    if (!gameOver) {
+      // a family member is lost in Lot's place; Lot bounces back up and carries on
+      this.graceMs = 2000;
+      this.lot.body.setVelocityY(-500);
+      return;
+    }
+    this.dead = true;
+    this.time.delayedCall(700, () => this.scene.start('TitleScene'));
   }
 
   update(time, delta) {
@@ -169,7 +177,7 @@ export default class MountainScene extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(this.keyT) && !this.atTop) {
         lot.setPosition(lot.x, MOUNTAIN.topY + 250);
         lot.body.setVelocityY(0);
-        cam.scrollY = Math.max(0, lot.y - MOUNTAIN.cameraLead);
+        setViewY(cam, Math.max(0, lot.y - MOUNTAIN.cameraLead));
       }
       const pct = Math.max(0, Math.min(100, (1 - (lot.y - MOUNTAIN.topY) / (MOUNTAIN.height - 8 - MOUNTAIN.topY)) * 100));
       this.debugText.setText(`y ${lot.y | 0}  ${pct.toFixed(0)}%  ${this.elapsed.toFixed(1)}s  invincible ${this.invincible}`);
@@ -177,12 +185,13 @@ export default class MountainScene extends Phaser.Scene {
 
     if (this.dead || this.atTop) return;
     this.elapsed += delta / 1000;
+    if (this.graceMs > 0) this.graceMs -= delta;
 
     lot.update({ left: this.controls.left, right: this.controls.right, jumpDown: true, jumpPressed: false }, delta);
-    cam.scrollY = Math.max(0, Math.min(cam.scrollY, lot.y - MOUNTAIN.cameraLead));
+    setViewY(cam, Math.max(0, Math.min(viewY(cam), lot.y - MOUNTAIN.cameraLead)));
 
-    if (lot.y > cam.scrollY + GAME_HEIGHT + 16) {
-      if (this.invincible) lot.body.setVelocityY(-500);
+    if (lot.y > viewY(cam) + GAME_HEIGHT + 16) {
+      if (this.invincible || this.graceMs > 0) lot.body.setVelocityY(-500);
       else this.die();
     }
   }

@@ -1,5 +1,6 @@
 import { ANGEL } from '../config.js';
 import { popText } from '../fx.js';
+import { flash, viewX, viewY, ART_SCALE } from '../view.js';
 
 export default class AngelBoost {
   constructor(scene, lot, family) {
@@ -20,25 +21,25 @@ export default class AngelBoost {
     this.family.protect(ANGEL.durationMs);
     this.attached = false;
     const cam = scene.cameras.main;
-    this.angels = [0, 1].map(() => scene.add.sprite(cam.scrollX - 20, cam.scrollY - 20, 'angel').setDepth(700).play('angel-flap'));
+    this.angels = [0, 1].map(() => scene.add.sprite(viewX(cam) - 20, viewY(cam) - 20, 'angel').setScale(ART_SCALE).setDepth(700).play('angel-flap'));
     this.angels.forEach((a, i) => {
       const t = this.targets()[i];
       scene.tweens.add({ targets: a, x: t.x, y: t.y, duration: ANGEL.swoopMs,
         onComplete: () => { if (i === 0) this.attached = true; } });
     });
     popText(scene, lot.x, lot.y - 24, 'HALLELUJAH!', '#ffe14a');
-    cam.flash(150, 255, 240, 180);
+    flash(scene, 150, 255, 240, 180);
   }
 
   targets() {
     const lot = this.lot;
     const vis = this.family.members.filter(m => m.visible && m.state !== 'lost' && m.state !== 'salted');
-    let b = { x: lot.x - 30, y: lot.y - lot.height - 6 };
+    let b = { x: lot.x - 30, y: lot.y - lot.displayHeight - 6 };
     if (vis.length) {
       const m = vis[0];
-      b = { x: vis.reduce((s, v) => s + v.x, 0) / vis.length, y: m.y - m.height - 22 };
+      b = { x: vis.reduce((s, v) => s + v.x, 0) / vis.length, y: m.y - m.displayHeight - 22 };
     }
-    return [{ x: lot.x, y: lot.y - lot.height - 6 }, b];
+    return [{ x: lot.x, y: lot.y - lot.displayHeight - 6 }, b];
   }
 
   update(delta) {

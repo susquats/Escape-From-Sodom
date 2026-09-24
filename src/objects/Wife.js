@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import FamilyMember from './FamilyMember.js';
 import { WIFE } from '../config.js';
+import { WIFE_LOOK_FRAME } from '../art/characters.js';
 
 const nextLookDelay = () => Phaser.Math.Between(WIFE.lookIntervalMinMs, WIFE.lookIntervalMaxMs);
 
@@ -51,8 +52,8 @@ export default class Wife extends FamilyMember {
     this.phase = 'notice';
     this.phaseTimer = WIFE.noticeMs;
     this.anims.stop();
-    this.setFrame(3); // alarmed pose
-    this.bang = this.scene.add.text(this.x, this.y - this.height - 2, '!', { fontFamily: 'monospace',
+    this.setFrame(WIFE_LOOK_FRAME); // alarmed, looking back
+    this.bang = this.scene.add.text(this.x, this.y - this.displayHeight - 2, '!', { fontFamily: 'monospace',
       fontSize: '8px', color: '#ffe14a', stroke: '#000', strokeThickness: 2 })
       .setOrigin(0.5, 1).setDepth(800);
   }
@@ -77,6 +78,11 @@ export default class Wife extends FamilyMember {
     this.cleanupLook();
     this.lookTimer = nextLookDelay();
     super.saltify(true);
+  }
+
+  dieRed() {
+    this.cleanupLook();
+    super.dieRed();
   }
 
   lose() {

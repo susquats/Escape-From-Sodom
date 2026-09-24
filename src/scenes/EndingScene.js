@@ -1,10 +1,13 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, ZOOM } from '../config.js';
 import { run } from '../runState.js';
 import { popText, puff } from '../fx.js';
+import { setupView, fadeIn, ART_SCALE } from '../view.js';
 
 const GROUND_Y = 150;
 const CAVE_X = 230;
+const JUG_SCALE = 1.5 * ART_SCALE;
+const JUG_H = 38 * JUG_SCALE; // jug texture height x scale
 const STROKE = { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 };
 
 export default class EndingScene extends Phaser.Scene {
@@ -13,6 +16,7 @@ export default class EndingScene extends Phaser.Scene {
   }
 
   create() {
+    setupView(this);
     // Night sky
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x141024).setOrigin(0);
 
@@ -33,19 +37,19 @@ export default class EndingScene extends Phaser.Scene {
 
     // Mountain-top ground
     this.add.rectangle(0, GROUND_Y, GAME_WIDTH, GAME_HEIGHT - GROUND_Y, 0x4a3a2e).setOrigin(0);
-    this.add.tileSprite(0, GROUND_Y, GAME_WIDTH, 6, 'ledge').setOrigin(0).setDepth(1);
+    this.add.tileSprite(0, GROUND_Y, GAME_WIDTH, 6, 'ledge').setTileScale(ART_SCALE).setOrigin(0).setDepth(1);
 
     // Rock details on ground
     for (let i = 0; i < 5; i++) {
-      this.add.image(20 + i * 60, GROUND_Y + 5, 'rock').setDepth(2).setAlpha(0.7);
+      this.add.image(20 + i * 60, GROUND_Y + 5, 'rock').setScale(ART_SCALE).setDepth(2).setAlpha(0.7);
     }
 
     // Cave (already has Lot inside from mountain scene)
-    this.cave = this.add.image(CAVE_X, GROUND_Y, 'cave').setOrigin(0.5, 1).setScale(2).setDepth(5);
+    this.cave = this.add.image(CAVE_X, GROUND_Y, 'cave').setOrigin(0.5, 1).setScale(2 * ART_SCALE).setDepth(5);
 
     const cam = this.cameras.main;
     cam.setBackgroundColor(0x141024);
-    cam.fadeIn(500);
+    fadeIn(this, 500);
 
     this.time.delayedCall(500, () => this.play());
   }
@@ -70,7 +74,7 @@ export default class EndingScene extends Phaser.Scene {
 
     // --- Wife ---
     if (!run.lost.has('wife')) {
-      const wife = this.add.image(-12, GROUND_Y, 'wife').setOrigin(0.5, 1).setDepth(3);
+      const wife = this.add.image(-12, GROUND_Y, 'wife').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(3);
       await walk(wife, 200);
       popText(this, wife.x, wife.y - 20, '!', '#ffe14a');
       await wait(300);
@@ -90,8 +94,8 @@ export default class EndingScene extends Phaser.Scene {
     const numDaughters = (d1Alive ? 1 : 0) + (d2Alive ? 1 : 0);
 
     if (numDaughters === 2) {
-      const d1 = this.add.image(-12, GROUND_Y, 'daughter1').setOrigin(0.5, 1).setDepth(3);
-      const d2 = this.add.image(-28, GROUND_Y, 'daughter2').setOrigin(0.5, 1).setDepth(3);
+      const d1 = this.add.image(-12, GROUND_Y, 'daughter1').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(3);
+      const d2 = this.add.image(-28, GROUND_Y, 'daughter2').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(3);
 
       // Walk to positions together (d2 starts 16px behind)
       await Promise.all([
@@ -102,11 +106,11 @@ export default class EndingScene extends Phaser.Scene {
       await wait(500);
 
       // Jug appears above d1
-      const jugStartY = GROUND_Y - 10 - 27 * 1.5; // 10px above where it will land
-      const jug = this.add.image(d1.x + 8, jugStartY, 'jug').setOrigin(0.5, 1).setScale(1.5).setDepth(4);
+      const jugStartY = GROUND_Y - 10 - JUG_H; // 10px above where it will land
+      const jug = this.add.image(d1.x + 8, jugStartY, 'jug').setOrigin(0.5, 1).setScale(JUG_SCALE).setDepth(4);
       puff(this, jug.x, jug.y, 0xffe14a, 5);
       popText(this, jug.x, jugStartY - 8, '!', '#ffe14a');
-      await tween({ targets: jug, y: GROUND_Y - 27 * 1.5, duration: 220, ease: 'Bounce.out' });
+      await tween({ targets: jug, y: GROUND_Y - JUG_H, duration: 220, ease: 'Bounce.out' });
 
       await wait(400);
 
@@ -116,7 +120,7 @@ export default class EndingScene extends Phaser.Scene {
       await wait(900);
 
       // Look at the player (zoom + front textures)
-      cam.zoomTo(1.6, 500);
+      cam.zoomTo(1.6 * ZOOM, 500);
       cam.pan(186, 130, 500);
       await wait(500);
       d1.setTexture('daughter1_front');
@@ -134,7 +138,7 @@ export default class EndingScene extends Phaser.Scene {
       await wait(300);
 
       // Zoom back, swap to side textures
-      cam.zoomTo(1, 400);
+      cam.zoomTo(ZOOM, 400);
       cam.pan(160, 90, 400);
       await wait(450);
       d1.setTexture('daughter1');
@@ -167,16 +171,16 @@ export default class EndingScene extends Phaser.Scene {
       const dKey = d1Alive ? 'daughter1' : 'daughter2';
       const winkKey = d1Alive ? 'daughter1_wink' : 'daughter2_wink';
       const frontKey = d1Alive ? 'daughter1_front' : 'daughter2_front';
-      const d = this.add.image(-12, GROUND_Y, dKey).setOrigin(0.5, 1).setDepth(3);
+      const d = this.add.image(-12, GROUND_Y, dKey).setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(3);
 
       await walk(d, 196);
       await wait(500);
 
       // Jug appears
-      const jug = this.add.image(d.x + 8, GROUND_Y - 27 * 1.5 - 10, 'jug').setOrigin(0.5, 1).setScale(1.5).setDepth(4);
+      const jug = this.add.image(d.x + 8, GROUND_Y - JUG_H - 10, 'jug').setOrigin(0.5, 1).setScale(JUG_SCALE).setDepth(4);
       puff(this, jug.x, jug.y, 0xffe14a, 5);
       popText(this, jug.x, jug.y - 8, '!', '#ffe14a');
-      await tween({ targets: jug, y: GROUND_Y - 27 * 1.5, duration: 220, ease: 'Bounce.out' });
+      await tween({ targets: jug, y: GROUND_Y - JUG_H, duration: 220, ease: 'Bounce.out' });
 
       await wait(300);
 
@@ -190,7 +194,7 @@ export default class EndingScene extends Phaser.Scene {
       await tween({ targets: d, y: GROUND_Y, duration: 80 });
 
       // Zoom + wink
-      cam.zoomTo(1.6, 500);
+      cam.zoomTo(1.6 * ZOOM, 500);
       cam.pan(196, 130, 500);
       await wait(500);
       d.setTexture(frontKey);
@@ -202,7 +206,7 @@ export default class EndingScene extends Phaser.Scene {
       await wait(300);
 
       // Zoom back
-      cam.zoomTo(1, 400);
+      cam.zoomTo(ZOOM, 400);
       cam.pan(160, 90, 400);
       await wait(450);
       d.setTexture(dKey);
@@ -224,7 +228,7 @@ export default class EndingScene extends Phaser.Scene {
     } else {
       // 0 daughters: Lot peeks out
       await wait(1500);
-      const lot = this.add.image(CAVE_X - 8, GROUND_Y, 'lot').setOrigin(0.5, 1).setAlpha(0).setDepth(6).setFlipX(true);
+      const lot = this.add.image(CAVE_X - 8, GROUND_Y, 'lot').setScale(ART_SCALE).setOrigin(0.5, 1).setAlpha(0).setDepth(6).setFlipX(true);
       await tween({ targets: lot, alpha: 1, duration: 200 });
       popText(this, lot.x - 10, lot.y - 24, '...', '#aaaaaa');
       await wait(1200);
@@ -234,7 +238,7 @@ export default class EndingScene extends Phaser.Scene {
     await wait(700);
 
     // Cut to black (reset camera first)
-    cam.setZoom(1);
+    cam.setZoom(ZOOM);
     cam.setScroll(0, 0);
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000).setOrigin(0).setScrollFactor(0).setDepth(1000);
 

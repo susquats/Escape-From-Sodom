@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import Controls from '../input/Controls.js';
 import { run, resetRun } from '../runState.js';
 import { creditLines, RATINGS } from '../credits.js';
+import { setupView, fadeIn, fadeOut } from '../view.js';
 
 const SCROLL_SPEED = 14;  // px/s
 const FAST_MUL = 4;
@@ -15,6 +16,7 @@ export default class CreditsScene extends Phaser.Scene {
   }
 
   create() {
+    setupView(this);
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000).setOrigin(0);
 
     const lines = creditLines(run.lost);
@@ -39,7 +41,7 @@ export default class CreditsScene extends Phaser.Scene {
       if (this.showingCard && this.ready) this.playAgain();
     });
 
-    this.cameras.main.fadeIn(400);
+    fadeIn(this, 400);
   }
 
   showFinalCard() {
@@ -95,7 +97,6 @@ export default class CreditsScene extends Phaser.Scene {
     if (this.starting) return;
     this.starting = true;
     resetRun();
-    this.cameras.main.fadeOut(300);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('TitleScene'));
+    fadeOut(this, 300, () => this.scene.start('TitleScene'));
   }
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DESTRUCTION, GAME_HEIGHT } from '../config.js';
+import { viewX, ART_SCALE } from '../view.js';
 
 export default class Destruction {
   constructor(scene, worldH) {
@@ -13,7 +14,7 @@ export default class Destruction {
       scene.add.rectangle(0, 0, w, worldH, 0xff6a00, a).setOrigin(0, 0).setDepth(599));
     this.flames = [];
     for (let i = 0; i < 12; i++) {
-      this.flames.push(scene.add.sprite(0, i * worldH / 12, 'flame').setOrigin(0.5, 0).setDepth(601)
+      this.flames.push(scene.add.sprite(0, i * worldH / 12, 'flame').setScale(ART_SCALE).setOrigin(0.5, 0).setDepth(601)
         .play({ key: 'flame-flicker', startFrame: i % 2 }));
     }
     this.warning = scene.add.rectangle(0, 0, 6, GAME_HEIGHT, 0xff2000).setOrigin(0)
@@ -31,14 +32,14 @@ export default class Destruction {
     if (this.delay > 0) this.delay -= delta;
     else {
       this.x += DESTRUCTION.speed * delta / 1000;
-      this.x = Math.max(this.x, cam.scrollX - DESTRUCTION.maxLag);
+      this.x = Math.max(this.x, viewX(cam) - DESTRUCTION.maxLag);
     }
     this.place();
     this.flames.forEach(f => {
       f.x = this.x + Phaser.Math.FloatBetween(-3, 3);
-      f.setScale(1, Phaser.Math.FloatBetween(0.8, 1.6));
+      f.setScale(ART_SCALE, Phaser.Math.FloatBetween(0.8, 1.6) * ART_SCALE);
     });
-    const d = cam.scrollX - this.x;
+    const d = viewX(cam) - this.x;
     this.warning.setAlpha(d > 0
       ? Phaser.Math.Clamp(1 - d / DESTRUCTION.warnRange, 0, 1) * (0.5 + 0.3 * Math.sin(this.scene.time.now / 100))
       : 0);

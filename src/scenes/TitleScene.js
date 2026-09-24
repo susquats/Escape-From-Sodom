@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
+import { COMET_HEAD } from '../art/items.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import Controls from '../input/Controls.js';
 import { resetRun } from '../runState.js';
 import { puff } from '../fx.js';
+import { setupView, fadeIn, fadeOut, ART_SCALE } from '../view.js';
 
 const GROUND_Y = 150;
 const STROKE = { fontFamily: 'monospace', stroke: '#000', strokeThickness: 2 };
@@ -13,6 +15,7 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    setupView(this);
     this.starting = false;
 
     // Sky
@@ -30,8 +33,8 @@ export default class TitleScene extends Phaser.Scene {
     // Flames on rooftops
     const flameXs = [18, 72, 122, 188, 228, 272];
     for (let i = 0; i < flameXs.length; i++) {
-      const f = this.add.image(flameXs[i], GROUND_Y - 2, 'flame').setDepth(0);
-      this.tweens.add({ targets: f, scaleY: 0.55 + (i % 3) * 0.15, duration: 120 + i * 35, yoyo: true, repeat: -1 });
+      const f = this.add.image(flameXs[i], GROUND_Y - 2, 'flame').setScale(ART_SCALE).setDepth(0);
+      this.tweens.add({ targets: f, scaleY: (0.55 + (i % 3) * 0.15) * ART_SCALE, duration: 120 + i * 35, yoyo: true, repeat: -1 });
     }
 
     // Ground strip
@@ -42,7 +45,7 @@ export default class TitleScene extends Phaser.Scene {
       ['lot', 150], ['wife', 132], ['daughter1', 118], ['daughter2', 106],
     ];
     chars.forEach(([key, x], i) => {
-      const s = this.add.image(x, GROUND_Y, key).setOrigin(0.5, 1).setDepth(2);
+      const s = this.add.image(x, GROUND_Y, key).setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(2);
       const baseY = GROUND_Y;
       this.tweens.add({
         targets: s, y: baseY - 1, duration: 700 + i * 160,
@@ -50,13 +53,14 @@ export default class TitleScene extends Phaser.Scene {
       });
     });
 
-    // Periodic fireballs falling from above
+    // Periodic comets raining in from the top left
     this.time.addEvent({
       delay: 1200, loop: true, callback: () => {
-        const x = Phaser.Math.Between(16, 304);
-        const fb = this.add.image(x, -8, 'fireball').setDepth(3);
+        const x = Phaser.Math.Between(16, 304), drop = GROUND_Y + 12, slope = 0.7;
+        const fb = this.add.sprite(x - drop * slope, -8, 'fireball').setScale(ART_SCALE).setDepth(3)
+          .setOrigin(COMET_HEAD.x / 32, COMET_HEAD.y / 32).setRotation(Math.atan2(1, slope) - Math.PI / 4).play('fireball-flicker');
         this.tweens.add({
-          targets: fb, y: GROUND_Y - 4, duration: 700,
+          targets: fb, x, y: GROUND_Y - 4, duration: 800,
           onComplete: () => { puff(this, fb.x, GROUND_Y - 4, 0xff8a1e, 4); fb.destroy(); },
         });
       },
@@ -78,17 +82,34 @@ export default class TitleScene extends Phaser.Scene {
     this.controls = new Controls(this, { touchButtons: [] });
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
 
-    this.input.on('pointerdown', () => { if (this.ready) this.startGame(); });
+    this.input.on('pointerdown', (p, over) => { if (this.ready && !over.length) this.startGame(); });
 
-    this.cameras.main.fadeIn(400);
+    if (import.meta.env.DEV) this.addLevelPicker();
+
+    fadeIn(this, 400);
   }
 
-  startGame() {
+  // Dev-only (vite dev server): jump straight to a level with keys 1-5 or a tap on its label.
+  addLevelPicker() {
+    const levels = [
+      ['SODOM', 'SodomScene'], ['FLIGHT', 'FlightScene'], ['WILDERNESS', 'WildernessScene'],
+      ['MOUNTAIN', 'MountainScene'], ['ENDING', 'EndingScene'],
+    ];
+    this.add.text(GAME_WIDTH / 2, 132, 'DEV: PICK LEVEL', { ...STROKE, fontSize: '6px', color: '#7fd4ff' }).setOrigin(0.5).setDepth(10);
+    const step = GAME_WIDTH / levels.length;
+    levels.forEach(([label, key], i) => {
+      const t = this.add.text(step * (i + 0.5), 142, `${i + 1} ${label}`, { ...STROKE, fontSize: '6px', color: '#fff', backgroundColor: '#00000088', padding: { x: 2, y: 2 } })
+        .setOrigin(0.5).setDepth(10).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', (p, lx, ly, ev) => { ev.stopPropagation(); this.startGame(key); });
+      this.input.keyboard.on(`keydown-${i + 1}`, () => this.startGame(key));
+    });
+  }
+
+  startGame(scene = 'SodomScene') {
     if (this.starting) return;
     this.starting = true;
     resetRun();
-    this.cameras.main.fadeOut(300);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('SodomScene'));
+    fadeOut(this, 300, () => this.scene.start(scene));
   }
 
   update() {
