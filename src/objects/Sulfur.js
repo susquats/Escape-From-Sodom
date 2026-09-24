@@ -23,8 +23,13 @@ export default class Sulfur {
     if (this.timer <= 0) {
       const progress = Phaser.Math.Clamp(lot.x / this.worldW, 0, 1);
       this.timer = Phaser.Math.Linear(SULFUR.startIntervalMs, SULFUR.endIntervalMs, progress);
-      const x = Phaser.Math.Clamp(lot.x + Phaser.Math.Between(SULFUR.aheadMin, SULFUR.aheadMax), 8, this.worldW - 8);
-      this.warn(x, lot);
+      // never aim at a pit: the family jumping across it would get hit, so try a few spots and skip if all are pits
+      for (let i = 0; i < 6; i++) {
+        const x = Phaser.Math.Clamp(lot.x + Phaser.Math.Between(SULFUR.aheadMin, SULFUR.aheadMax), 8, this.worldW - 8);
+        if (this.scene.nearPit && this.scene.nearPit(x)) continue;
+        this.warn(x, lot);
+        break;
+      }
     }
     this.balls.getChildren().slice().forEach(b => { if (b.y > this.worldH + 20) b.destroy(); });
   }

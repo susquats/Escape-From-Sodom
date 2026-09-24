@@ -84,6 +84,7 @@ export const RAMPS = {
   hairDark: ['#160c0c', '#2c1812', '#46261a', '#643824', '#844c30'],
   shorts: ['#120e18', '#241e2c', '#3a3242', '#544a58', '#726672'],
   red: ['#480a10', '#861418', '#c02422', '#e44c36', '#ff8a66'],
+  green: ['#0c3418', '#1a6a2a', '#2c9c3c', '#54cc58', '#98f088'],
   gold: ['#6a380a', '#a8660c', '#dc9e1e', '#f6cc46', '#fff29a'],
   wing: ['#39487c', '#7488c2', '#aec2ec', '#dce8ff', '#ffffff'],
   metal: ['#2c3040', '#5a6278', '#949cb0', '#c8cedc', '#f4f6fc'],
@@ -106,4 +107,13 @@ export const ENV = {
   cloth: ['#4a0a10', '#861a1a', '#bc2e24', '#e05034'],
   linen: ['#6a4a36', '#a88a64', '#d8c09a', '#f4e6c4'],
   glow: ['#1c0406', '#4a0a0a', '#8e1e10', '#d44818', '#ff8c28', '#ffc850', '#fff2b0'],
+};
+
+// The same city the night before the destruction (Act I's opening): moonlit, cool, intact, lamps in the windows.
+export const ENV_NIGHT = {
+  sand: ['#120a16', '#34222e', '#56383c', '#7a5448', '#9c7058', '#bc906c', '#d8b288'],
+  stone: ['#120a16', '#3a2834', '#5e4444', '#846252', '#a68064', '#c4a07c', '#e2c89e'],
+  wall: ['#100a14', '#342830', '#54443e', '#76604e', '#947c62', '#b09a78', '#ceba94'],
+  dark: ['#06060e', '#0e0f1e', '#16182c', '#1e2238', '#282c48', '#343a58', '#484e6e'],
+  glow: ['#1c0a06', '#3e180a', '#6e3010', '#a8541a', '#d88230', '#f0aa48', '#fcd27a'],
 };

@@ -192,7 +192,11 @@ function headSide(c, h, { style, hair, skin = 'skin', dir = 1, blink, dead, mout
     c.ellipse(X(-0.2), cy - 3.2, 5.6, 3.2, hair, { tex: STRANDS, clip: (x, y) => y + 0.5 < cy - 3.2 + (x + 0.5 - cx) * dir * 0.2 || (x + 0.5 - cx) * dir < -1.5, contour: false });
     c.capsule(P(X(-1.3), cy - 1.5), P(X(-0.6), cy + 3.5), 1.1, 1.4, hair, { tex: STRANDS }); // sideburn
   }
-  if (style === 'sodomite') c.capsule(P(X(-4.5), cy - 2.4), P(X(4.2), cy - 2.2), 1.3, 1.1, 'red');
+  if (style === 'sodomite') { // rainbow headband: one color per segment, all one part so no contour between them
+    const band = c.newPart(false), mats = ['red', 'clay', 'gold', 'green', 'blue', 'violet'], n = mats.length;
+    const at = (t) => P(X(-4.5 + 8.7 * t), cy - 2.4 + 0.2 * t);
+    mats.forEach((m, i) => c.capsule(at(i / n), at((i + 1) / n), 1.3 - 0.2 * (i / n), 1.3 - 0.2 * ((i + 1) / n), m, { part: band }));
+  }
 
   // beard
   if (style === 'lot' || style === 'sodomite') {
@@ -222,13 +226,20 @@ function headSide(c, h, { style, hair, skin = 'skin', dir = 1, blink, dead, mout
 }
 
 // Front-facing head (ending scene).
-function headFront(c, h, { hair, wink }) {
+function headFront(c, h, { hair, wink, veil }) {
   const cx = h.x, cy = h.y;
-  c.capsule(P(cx - 4.5, cy), P(cx - 5.2, cy + 10), 3.2, 2.4, hair);
-  c.capsule(P(cx + 4.5, cy), P(cx + 5.2, cy + 10), 3.2, 2.4, hair);
-  c.ellipse(cx, cy - 0.5, 6.2, 5.8, hair);
+  if (veil) { // white head covering draped over the crown and down past the shoulders
+    c.capsule(P(cx - 5, cy), P(cx - 6, cy + 11), 3.8, 3, 'veil');
+    c.capsule(P(cx + 5, cy), P(cx + 6, cy + 11), 3.8, 3, 'veil');
+    c.ellipse(cx, cy - 1, 7, 6.6, 'veil');
+  }
+  if (!veil) {
+    c.capsule(P(cx - 4.5, cy), P(cx - 5.2, cy + 10), 3.2, 2.4, hair);
+    c.capsule(P(cx + 4.5, cy), P(cx + 5.2, cy + 10), 3.2, 2.4, hair);
+  }
+  if (!veil) c.ellipse(cx, cy - 0.5, 6.2, 5.8, hair);
   c.ellipse(cx, cy + 1, 4.6, 5, 'skin');
-  c.ellipse(cx, cy - 2.6, 5.6, 3.2, hair, { clip: (x, y) => y + 0.5 < cy - 1.6 + Math.abs(x + 0.5 - cx) * 0.35 });
+  c.ellipse(cx, cy - 2.6, 5.6, 3.2, veil ? 'veil' : hair, { clip: (x, y) => y + 0.5 < cy - 1.6 + Math.abs(x + 0.5 - cx) * 0.35 });
   const L = Math.floor(cx - 3), R = Math.floor(cx + 1), ey = Math.floor(cy + 0.8);
   if (wink) { c.ink(L, ey + 1, PUPIL); c.ink(L + 1, ey + 1, PUPIL); c.ink(L + 1, ey, PUPIL); } else eye(c, L, ey, 1, { big: true, lash: true });
   eye(c, R, ey, 1, { big: true, lash: true });
@@ -304,6 +315,22 @@ function girlFront(c, s, dressMat, wink) {
   c.capsule(P(cx - 3.8, Y + 17.5), P(cx + 3.8, Y + 17.5), 0.8, 0.8, 'gold');
   for (const dx of [-1, 1]) c.ellipse(cx + dx * 5.4, Y + 22, 1.3, 1.3, 'skin');
   headFront(c, P(cx, Y + 7.5), { hair: 'hairGirl', wink });
+  return c.finish();
+}
+
+// Front-facing wife (family HUD): a taller, blue-robed version of the girls.
+function wifeFront() {
+  const c = new Canvas(WIFE.w, WIFE.h), cx = 19, Y = 3;
+  for (const dx of [-2.2, 2.2]) {
+    c.capsule(P(cx + dx, Y + 24), P(cx + dx * 1.1, Y + 32), 1.8, 1.4, 'skin');
+    c.ellipse(cx + dx * 1.2, Y + 33.5, 2.1, 1.3, 'leather');
+  }
+  for (const dx of [-1, 1]) c.capsule(P(cx + dx * 4.6, Y + 14.5), P(cx + dx * 5.8, Y + 22.5), 1.6, 1.3, 'blue');
+  c.poly([P(cx - 3, Y + 12.5), P(cx - 4.8, Y + 14), P(cx - 4.2, Y + 19.5), P(cx - 7, Y + 28), P(cx + 7, Y + 28),
+    P(cx + 4.2, Y + 19.5), P(cx + 4.8, Y + 14), P(cx + 3, Y + 12.5)], 'blue');
+  c.capsule(P(cx - 4.2, Y + 18), P(cx + 4.2, Y + 18), 0.9, 0.9, 'gold');
+  for (const dx of [-1, 1]) c.ellipse(cx + dx * 6, Y + 23.5, 1.4, 1.4, 'skin');
+  headFront(c, P(cx, Y + 7.5), { hair: 'hairGirl', veil: true });
   return c.finish();
 }
 
@@ -399,6 +426,7 @@ export const CHARACTER_SPRITES = {
   ] },
   daughter1: { w: GIRL.w, h: GIRL.h, cx: GIRL.cx, body: [20, 32], frames: D1.side },
   daughter2: { w: GIRL.w, h: GIRL.h, cx: GIRL.cx, body: [20, 32], frames: D2.side },
+  wife_front: { w: WIFE.w, h: WIFE.h, frames: [wifeFront()] },
   daughter1_front: { w: GIRL.w, h: GIRL.h, frames: D1.front },
   daughter2_front: { w: GIRL.w, h: GIRL.h, frames: D2.front },
   daughter1_wink: { w: GIRL.w, h: GIRL.h, frames: D1.wink },

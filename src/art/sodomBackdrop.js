@@ -1,8 +1,10 @@
 // Act I backdrop, painted in code at 2x density: a night sky, a band of fire-lit smoke, a far skyline of
 // silhouettes with lit windows and roof fires, and nearer ruined brick buildings. The layers wrap
 // horizontally so they can be repeated for parallax. Style reference: art/reference/style-sheet.webp.
+// Each layer also has a calm variant ('sodom-night-*'): the same city the night before, under the moon, with
+// lamplit windows, whole rooftops and no fire or smoke. Act I opens on it and cross-fades to the burning one.
 import { Pix, hash, noise1, noise2, dith, pixTexture } from './pix.js';
-import { ENV } from './palette.js';
+import { ENV, ENV_NIGHT } from './palette.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wrapSet = (p, x, y, c) => p.set(((x % p.w) + p.w) % p.w, y, c);
@@ -20,17 +22,50 @@ function fbm(x, y, s, wrap) {
   return v / 0.97;
 }
 
+// a calm night: deep blue down to a faint violet haze over the horizon
+const NIGHT_SKY = ['#04061a', '#080c26', '#0c1230', '#121a3a', '#1a2244', '#242a4c', '#302f52', '#3c3456'];
+const NIGHT_CLOUD = ['#0e1430', '#161e3e', '#20294c', '#2c3558', '#3a4468', '#56608a'];
+
 // Screen-fixed sky gradient (dithered bands).
-function sky() {
-  const p = new Pix(SKY_W, SKY_H);
+function sky(calm) {
+  const p = new Pix(SKY_W, SKY_H), ramp = calm ? NIGHT_SKY : SKY;
   for (let y = 0; y < SKY_H; y++) {
-    const t = Math.pow(y / SKY_H, 1.25) * (SKY.length - 1);
-    for (let x = 0; x < SKY_W; x++) p.set(x, y, SKY[clamp(dith(t, x, y), 0, SKY.length - 1)]);
+    const t = Math.pow(y / SKY_H, 1.25) * (ramp.length - 1);
+    for (let x = 0; x < SKY_W; x++) p.set(x, y, ramp[clamp(dith(t, x, y), 0, ramp.length - 1)]);
   }
-  // a few faint stars in the top band
-  for (let i = 0; i < 40; i++) {
-    const x = Math.floor(hash(i, 1, 3) * SKY_W), y = Math.floor(hash(i, 2, 3) * 70);
-    p.set(x, y, hash(i, 3, 3) < 0.3 ? '#8a7ab0' : '#3a2e62');
+  // stars: a few faint ones in the top band, many more on a clear night
+  for (let i = 0; i < (calm ? 150 : 40); i++) {
+    const x = Math.floor(hash(i, 1, 3) * SKY_W), y = Math.floor(hash(i, 2, 3) * (calm ? 170 : 70));
+    const q = hash(i, 3, 3);
+    p.set(x, y, calm ? (q < 0.15 ? '#fff6d8' : q < 0.5 ? '#9aa4d0' : '#4a5488') : q < 0.3 ? '#8a7ab0' : '#3a2e62');
+    if (calm && q < 0.04) [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => p.set(x + dx, y + dy, '#6a74a8'));
+  }
+  if (calm) {
+    // the moon, with a soft halo
+    const mx = 470, my = 62, r = 15;
+    for (let y = my - 44; y <= my + 44; y++) for (let x = mx - 44; x <= mx + 44; x++) {
+      const d = Math.hypot(x - mx, y - my);
+      if (d <= r) {
+        const lit = clamp(1 - Math.hypot(x - mx + 5, y - my + 5) / (r * 1.7), 0, 1);
+        const crater = noise2(x / 4, y / 4, 5) > 0.68;
+        p.set(x, y, ['#b8b4a4', '#d8d2bc', '#eee8d0', '#fffbe8'][clamp(dith(lit * 3.4 - (crater ? 1 : 0), x, y), 0, 3)]);
+      } else if (d <= r + 1) p.set(x, y, '#8a8ca8');
+      else if (dith(clamp(1 - (d - r) / 30, 0, 1) * 0.9, x, y) > 0) p.set(x, y, '#3a4270');
+    }
+  }
+  return p;
+}
+
+// Thin moonlit cloud wisps for the calm night. Wraps horizontally every CLOUD_W px.
+function nightClouds() {
+  const p = new Pix(CLOUD_W, CLOUD_H), wrap = 16, sx = CLOUD_W / wrap;
+  for (let y = 0; y < CLOUD_H; y++) for (let x = 0; x < CLOUD_W; x++) {
+    const band = Math.exp(-(((y - 70) / 26) ** 2)) + 0.6 * Math.exp(-(((y - 150) / 18) ** 2));
+    const dens = fbm(x / sx, y / 20, 13, wrap) * band - 0.42;
+    if (dens < 0) continue;
+    const above = fbm(x / sx, (y - 5) / 20, 13, wrap) * band - 0.42;
+    const v = clamp(dens * 9 + (dens > above ? 1.4 : 0), 0, NIGHT_CLOUD.length - 1);
+    p.set(x, y, NIGHT_CLOUD[clamp(dith(v, x, y), 0, NIGHT_CLOUD.length - 1)]);
   }
   return p;
 }
@@ -102,9 +137,11 @@ function roofline(w, h, filled) {
 // ---------------------------------------------------------------------------------------------------------
 // Far skyline: flat silhouettes (towers, domes, stepped temples), lit windows, fires on some roofs.
 export const FAR_W = 1024, FAR_H = 240;
-const FAR = { body: '#2a0a22', rim: '#5a1628', win: ['#f08a30', '#ffc860', '#c85020'], dark: '#1c0616' };
+const FAR = { body: '#2a0a22', rim: '#5a1628', win: ['#f08a30', '#ffc860', '#c85020'], dark: '#1c0616', lit: '#3a0c22' };
+const FAR_NIGHT = { body: '#0e1024', rim: '#2e3458', win: ['#c8802c', '#f0b454', '#8a5420'], dark: '#080a1a', lit: '#12152c' };
 
-function farSkyline() {
+function farSkyline(calm) {
+  const C = calm ? FAR_NIGHT : FAR;
   const p = new Pix(FAR_W, FAR_H);
   const shape = new Uint8Array(FAR_W * FAR_H); // 1 = building
   const put = (x, y) => { x = ((x % FAR_W) + FAR_W) % FAR_W; if (y >= 0 && y < FAR_H) shape[y * FAR_W + x] = 1; };
@@ -131,8 +168,9 @@ function farSkyline() {
       // stepped ziggurat
       for (let s = 1; s <= 3; s++) rect(x + s * 5, top - s * 9, w - s * 10, 9);
     } else if (kind < 0.8) {
-      // broken top
-      for (let xx = 0; xx < w; xx++) rect(x + xx, top - Math.floor(noise1((x + xx) / 5, 72) * 18), 1, 18);
+      // broken top (still whole the night before: a flat roof with a parapet)
+      if (calm) { rect(x, top - 4, w, 4); rect(x + 2, top - 7, 3, 3); rect(x + w - 5, top - 7, 3, 3); }
+      else for (let xx = 0; xx < w; xx++) rect(x + xx, top - Math.floor(noise1((x + xx) / 5, 72) * 18), 1, 18);
     } else {
       // crenellated wall
       for (let xx = 0; xx < w; xx += 6) rect(x + xx, top - 5, 3, 5);
@@ -140,9 +178,9 @@ function farSkyline() {
     // windows grid
     for (let wy = top + 8; wy < FAR_H - 6; wy += 11) for (let wx = x + 4; wx < x + w - 5; wx += 8) {
       const q = hash(wx, wy, 73);
-      if (q < 0.3) windows.push([wx, wy, q < 0.08 ? 1 : q < 0.22 ? 0 : 2]);
+      if (q < (calm ? 0.16 : 0.3)) windows.push([wx, wy, q < 0.08 ? 1 : q < 0.22 ? 0 : 2]);
     }
-    if (r(7) < 0.4) fires.push([x + w * (0.3 + r(8) * 0.4), 14 + r(9) * 22, 16 + r(10) * 26, r(11)]);
+    if (!calm && r(7) < 0.4) fires.push([x + w * (0.3 + r(8) * 0.4), 14 + r(9) * 22, 16 + r(10) * 26, r(11)]);
     x += w - Math.floor(r(5) * w * 0.4);
     i++;
   }
@@ -151,11 +189,11 @@ function farSkyline() {
     const up = y > 0 && shape[(y - 1) * FAR_W + x];
     // backlit: a thin warm rim along the tops, a dithered glow rising from the bottom
     const glow = clamp((y - FAR_H * 0.55) / (FAR_H * 0.45), 0, 1);
-    p.set(x, y, !up ? FAR.rim : dith(glow * 1.2, x, y) > 0 ? '#3a0c22' : FAR.body);
+    p.set(x, y, !up ? C.rim : dith(glow * (calm ? 0.5 : 1.2), x, y) > 0 ? C.lit : C.body);
   }
   for (const [wx, wy, k] of windows) {
     if (!shape[wy * FAR_W + (wx % FAR_W)] || !shape[(wy + 4) * FAR_W + ((wx + 2) % FAR_W)]) continue;
-    for (let yy = 0; yy < 4; yy++) for (let xx = 0; xx < 3; xx++) wrapSet(p, wx + xx, wy + yy, yy === 0 && k === 1 ? '#fff0b0' : FAR.win[k]);
+    for (let yy = 0; yy < 4; yy++) for (let xx = 0; xx < 3; xx++) wrapSet(p, wx + xx, wy + yy, yy === 0 && k === 1 && !calm ? '#fff0b0' : C.win[k]);
   }
   const roof = roofline(FAR_W, FAR_H, (x, y) => shape[y * FAR_W + x]);
   for (const [fx, w, h, sd] of fires) flames(p, fx, w, h, sd, roof);
@@ -166,8 +204,10 @@ function farSkyline() {
 // Mid ruins: nearer brick buildings, lit on their left sides by fire, arched glowing windows, ragged tops.
 export const MID_W = 768, MID_H = 280;
 const MID = ['#12040c', '#200816', '#2e0c1e', '#3e1226', '#521a2c', '#6e2430', '#943630', '#c05232'];
+const MID_NIGHT = ['#06081a', '#0c1024', '#12162e', '#181e38', '#202844', '#2a3452', '#3a4666', '#52607e'];
 
-function midRuins() {
+function midRuins(calm) {
+  const M = calm ? MID_NIGHT : MID;
   const p = new Pix(MID_W, MID_H);
   const id = new Int16Array(MID_W * MID_H).fill(-1);
   const b = [];
@@ -183,7 +223,7 @@ function midRuins() {
   for (const B of b) {
     for (let xx = 0; xx < B.w; xx++) {
       const X = (B.x + xx) % MID_W;
-      const drop = Math.floor(Math.pow(noise1((B.x + xx) / 9, 82 + B.i), 2) * 44 / 8) * 8;
+      const drop = calm ? 0 : Math.floor(Math.pow(noise1((B.x + xx) / 9, 82 + B.i), 2) * 44 / 8) * 8;
       for (let y = B.top + drop; y < MID_H; y++) id[y * MID_W + X] = B.i;
     }
   }
@@ -196,31 +236,33 @@ function midRuins() {
     // bricks 12x6
     const course = Math.floor(y / 6), sx = lx + (course & 1 ? 6 : 0), ly = y % 6;
     const mortar = ly === 5 || sx % 12 === 11;
-    // fire light from the lower left
-    const light = clamp(1 - lx / B.w, 0, 1) * 0.9 + clamp((y - MID_H * 0.45) / MID_H, 0, 1) * 1.6;
+    // fire light from the lower left (moonlight from the upper right on the calm night)
+    const light = calm ? clamp(lx / B.w, 0, 1) * 0.9 + clamp(1 - y / MID_H, 0, 1) * 0.6
+      : clamp(1 - lx / B.w, 0, 1) * 0.9 + clamp((y - MID_H * 0.45) / MID_H, 0, 1) * 1.6;
     let t = 2 + dith(light * 1.6, X, y) + (ly === 0 ? 1 : 0) - (hash(sx >> 3, course, 83) < 0.2 ? 1 : 0);
     if (mortar) t = 1;
     if (!up) t = 6;
-    else if (!left) t = 5;
-    else if (!right) t = 0;
-    p.set(X, y, MID[clamp(t, 0, MID.length - 1)]);
+    else if (!left) t = calm ? 1 : 5;
+    else if (!right) t = calm ? 5 : 0;
+    p.set(X, y, M[clamp(t, 0, M.length - 1)]);
   }
   // arched windows with fire inside
   for (const B of b) {
     for (let wy = B.top + 40; wy < MID_H - 30; wy += 46) for (let wx = B.x + 12; wx < B.x + B.w - 22; wx += 30) {
       if (id[(wy - 8) * MID_W + (wx + 5) % MID_W] !== B.i || hash(wx, wy, 84) < 0.25) continue;
-      const hot = hash(wx, wy, 85) < 0.55;
+      const hot = hash(wx, wy, 85) < 0.55, lamp = calm && hash(wx, wy, 87) < 0.5;
       for (let yy = -6; yy < 22; yy++) for (let xx = 0; xx < 12; xx++) {
         const dx = xx - 5.5, inside = yy >= 0 ? true : dx * dx + yy * yy <= 36;
         const frame = yy >= -1 ? (xx === 0 || xx === 11) : dx * dx + yy * yy > 25 && inside;
         if (!inside) continue;
-        const v = hot ? clamp((yy + 6) / 28, 0, 1) * 5 : 0.4;
-        const c = frame ? MID[6] : ENV.glow[clamp(dith(v, xx, yy), 0, 5)];
+        const v = calm ? (lamp ? 2.4 + clamp((yy + 6) / 28, 0, 1) * 1.6 : 0.3) : hot ? clamp((yy + 6) / 28, 0, 1) * 5 : 0.4;
+        const c = frame ? M[6] : (calm ? ENV_NIGHT : ENV).glow[clamp(dith(v, xx, yy), 0, 5)];
         wrapSet(p, wx + xx, wy + yy, c);
       }
-      for (let xx = -1; xx < 13; xx++) { wrapSet(p, wx + xx, wy + 22, MID[7]); wrapSet(p, wx + xx, wy + 23, MID[1]); }
+      for (let xx = -1; xx < 13; xx++) { wrapSet(p, wx + xx, wy + 22, M[7]); wrapSet(p, wx + xx, wy + 23, M[1]); }
     }
   }
+  if (calm) return p;
   // fires on some ragged tops
   const roof = roofline(MID_W, MID_H, (x, y) => id[y * MID_W + x] >= 0);
   for (const B of b) {
@@ -237,4 +279,13 @@ export function buildSodomBackdrop(scene) {
   pixTexture(scene, 'sodom-clouds', clouds());
   pixTexture(scene, 'sodom-far', farSkyline());
   pixTexture(scene, 'sodom-mid', midRuins());
+}
+
+// The calm variant, 'sodom-night-*' (same sizes as the burning layers).
+export function buildSodomNightBackdrop(scene) {
+  if (scene.textures.exists('sodom-night-sky')) return;
+  pixTexture(scene, 'sodom-night-sky', sky(true));
+  pixTexture(scene, 'sodom-night-clouds', nightClouds());
+  pixTexture(scene, 'sodom-night-far', farSkyline(true));
+  pixTexture(scene, 'sodom-night-mid', midRuins(true));
 }

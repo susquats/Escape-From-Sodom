@@ -1,19 +1,22 @@
+import { t } from './i18n.js';
+
 export const MADE_BY = 'YOUR NAME HERE';
+
+const DOTS = 19;
+const row = ([label, value]) => `${label} ${'.'.repeat(Math.max(2, DOTS - label.length))} ${value}`;
 
 export function creditLines(lost) {
   return [
-    'SODOM', '', 'A GENESIS 19 PRODUCTION', '', '',
-    'LOT ................ HIMSELF',
-    `LOT'S WIFE ......... ${lost.has('wife') ? 'A PILLAR OF SALT' : 'HERSELF (SOMEHOW)'}`,
-    'DAUGHTER 1 ......... DAUGHTER 1',
-    'DAUGHTER 2 ......... DAUGHTER 2',
-    'TWO ANGELS ......... TWO ANGELS',
-    'SODOMITES .......... VARIOUS',
-    'FIRE AND SULFUR .... THE LORD',
-    'SALT ............... TABLE SALT', '', '',
-    'NO CITIES WERE SPARED', 'IN THE MAKING OF THIS GAME', '', '',
-    `MADE FOR FRIENDS BY ${MADE_BY}`,
+    t('credits.title'), '', t('credits.by'), '', '',
+    row(t('credits.lot')),
+    row([t('credits.wife'), lost.has('wife') ? t('credits.wifeSalt') : t('credits.wifeAlive')]),
+    row(t('credits.d1')),
+    row(t('credits.d2')),
+    row(t('credits.angels')),
+    row(t('credits.sodomites')),
+    row(t('credits.fire')),
+    row(t('credits.salt')), '', '',
+    t('credits.spared1'), t('credits.spared2'), '', '',
+    t('credits.madeBy', { name: MADE_BY }),
   ];
 }
-
-export const RATINGS = ['ALONE IN A CAVE', 'A SMALL FAMILY', 'MOSTLY FAMILY', 'THE WHOLE CLAN'];

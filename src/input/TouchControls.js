@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, ZOOM } from '../config.js';
+import { t } from '../i18n.js';
 
 export default class TouchControls {
   constructor(scene, names = ['left', 'right', 'jump', 'restart']) {
@@ -14,7 +15,7 @@ export default class TouchControls {
     const defs = {
       left: () => this.makeButton(8, GAME_HEIGHT - 8 - 40, 40, 40, '<'),
       right: () => this.makeButton(rightX, GAME_HEIGHT - 8 - 40, 40, 40, '>'),
-      jump: () => this.makeButton(GAME_WIDTH - 8 - 48, GAME_HEIGHT - 8 - 48, 48, 48, 'JUMP'),
+      jump: () => this.makeButton(GAME_WIDTH - 8 - 48, GAME_HEIGHT - 8 - 48, 48, 48, t('btn.jump')),
       restart: () => this.makeButton(GAME_WIDTH - 24, 6, 18, 18, 'R'),
     };
     this.buttons = {};

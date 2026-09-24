@@ -5,6 +5,7 @@ import { run } from '../runState.js';
 import { shake, viewY, ART_SCALE } from '../view.js';
 import { fitBody } from '../art/sprites.js';
 import { AIR_FRAMES } from '../art/characters.js';
+import { t } from '../i18n.js';
 
 export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, key, spacing, trail, saltGroup) {
@@ -91,7 +92,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
         this.setPosition(p.x, p.y);
         this.airborne = !p.onGround;
         this.rising = this.trail.sample(Math.max(0, this.spacing - this.slack - 3)).y < p.y; // path ahead goes up
-        this.setFlipX(p.facing < 0);
+        this.setFlipX(this.faceOverride != null ? this.faceOverride < 0 : p.facing < 0);
         this.blink(delta);
         break;
       }
@@ -108,7 +109,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
         } else {
           this.setPosition(this.x + dx / dist * step, this.y + dy / dist * step);
         }
-        this.setFlipX(p.facing < 0);
+        this.setFlipX(this.faceOverride != null ? this.faceOverride < 0 : p.facing < 0);
         this.blink(delta);
         break;
       }
@@ -131,14 +132,14 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     this.salt = this.saltGroup.create(this.x, this.y - 6, 'salt').setScale(ART_SCALE);
     this.salt.member = this;
     this.salt.setVelocity(0, -60); // tiny hop
-    popText(this.scene, this.x, this.y - 20, 'PFFT!');
+    popText(this.scene, this.x, this.y - 20, t('pop.pfft'));
     puff(this.scene, this.x, this.y - 8);
     shake(this.scene, 80, 0.004);
   }
 
   rescue() {
     if (this.state !== 'salted') return;
-    popText(this.scene, this.salt.x, this.salt.y - 10, 'POP!', '#ffe14a');
+    popText(this.scene, this.salt.x, this.salt.y - 10, t('pop.saved'), '#ffe14a');
     puff(this.scene, this.salt.x, this.salt.y, 0xffe14a);
     this.setPosition(this.salt.x, this.salt.body.bottom);
     this.salt.destroy();
@@ -159,6 +160,22 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
       onComplete: () => { this.clearTint(); this.lose(); this.setAlpha(1); } });
   }
 
+  // brought back by the angels (end of Act I): stands with the family again
+  restore() {
+    if (this.state !== 'lost') return;
+    run.lost.delete(this.memberName);
+    this.state = 'following';
+    this.invulnTimer = 0;
+    this.slack = 0;
+    this.lastTotal = this.trail.total;
+    const p = this.trail.sample(this.spacing);
+    this.setPosition(p.x, p.y);
+    this.clearTint();
+    this.setVisible(true).setAlpha(0);
+    this.body.enable = true;
+    this.scene.tweens.add({ targets: this, alpha: 1, duration: 500 });
+  }
+
   lose() {
     if (this.state === 'lost') return;
     const cam = this.scene.cameras.main;
@@ -173,6 +190,6 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     run.lost.add(this.memberName);
     this.setVisible(false);
     this.body.enable = false;
-    popText(this.scene, x, y, 'LOST!', '#ff5a5a');
+    popText(this.scene, x, y, t('pop.lost'), '#ff5a5a');
   }
 }

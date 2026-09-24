@@ -5,11 +5,24 @@ import Controls from '../input/Controls.js';
 import Trail from '../objects/Trail.js';
 import Family from '../objects/Family.js';
 import FamilyHud from '../ui/FamilyHud.js';
-import { setupView, fadeIn, fadeOut, setViewX, ART_SCALE } from '../view.js';
+import { setupView, fadeIn, fadeOut, setViewX, shake, viewX, viewY, ART_SCALE } from '../view.js';
+import { puff, speech } from '../fx.js';
+import { pixTexture } from '../art/pix.js';
+import { comet, COMET_HEAD } from '../art/comet.js';
+import { buildWildernessArt, WILD, GROUND_Y0 } from '../art/wildernessArt.js';
+import { t } from '../i18n.js';
 
-const WORLD_W = 1600;
+const WORLD_W = 960;
 const WORLD_H = 180;
 const STREET = 9; // ground top y = 144
+const SALT_X = 500; // Lot's x where his wife looks back for the last time (a flat stretch)
+const CLIFF_X = 882; // the foot of the mountain's cliff: the walk ends here
+// ground blocks [tile x, tile y of the top, width in tiles]
+const LAYOUT = [[0, STREET, 14], [14, STREET - 1, 10], [24, STREET, 20], [44, STREET - 1, 16]];
+const groundTop = (x) => {
+  const b = LAYOUT.find(([tx, , w]) => x >= tx * TILE && x < (tx + w) * TILE) || LAYOUT[LAYOUT.length - 1];
+  return b[1] * TILE;
+};
 
 export default class WildernessScene extends Phaser.Scene {
   constructor() {
@@ -20,6 +33,7 @@ export default class WildernessScene extends Phaser.Scene {
     setupView(this);
     this.physics.world.gravity.y = MOVE.gravity;
     this.exiting = false;
+    this.cutscene = false;
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.physics.world.setBoundsCollision(true, true, true, false);
 
@@ -31,6 +45,7 @@ export default class WildernessScene extends Phaser.Scene {
     this.physics.add.collider(this.lot, this.terrain);
     this.trail = new Trail(this.lot.x, STREET * TILE, FAMILY.trailMaxLength);
     this.family = new Family(this, this.trail, this.terrain);
+    this.family.members[0].lookTimer = Infinity; // no random look-backs here: she looks back once (saltWife)
     this.hud = new FamilyHud(this, this.family);
     this.physics.add.overlap(this.lot, this.family.saltGroup, (lot, salt) => {
       if (this.time.now - salt.member.saltedAt > 350) salt.member.rescue();
@@ -55,62 +70,33 @@ export default class WildernessScene extends Phaser.Scene {
     }
   }
 
+  // The walk from Act I to Act III (src/art/wildernessArt.js): Sodom burning behind them under a fire-lit
+  // sky that darkens into Act III's night as they go, sand turning to the mountain's rock, and the mountain
+  // looming up until its cliff rises out of the ground at the end.
   buildBackground() {
-    // dusk sky, fixed
-    [0x2a1e3a, 0x4a2a44, 0x7a3a3a, 0xb0603a].forEach((c, i) => {
-      this.add.rectangle(0, i * 45, GAME_WIDTH, 45, c).setOrigin(0).setScrollFactor(0).setDepth(-3);
-    });
-
-    // burning Sodom, far away on the left
-    const gy = STREET * TILE;
-    this.add.rectangle(0, gy, 220, 60, 0xff6a1e, 0.25).setOrigin(0, 1).setScrollFactor(0.2).setDepth(-2.6);
-    [[4, 30, 22], [30, 48, 16], [52, 26, 20], [76, 56, 18], [100, 36, 24], [128, 44, 16], [150, 28, 22], [176, 40, 18]]
-      .forEach(([x, h, w]) => this.add.rectangle(x, gy, w, h, 0x4a1414).setOrigin(0, 1).setScrollFactor(0.2).setDepth(-2.5));
-    [20, 88, 150].forEach(x => {
-      const f = this.add.sprite(x, gy - 34, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setScrollFactor(0.2).setDepth(-2.4)
-        .play({ key: 'flame-flicker', startFrame: x % 4 });
-      this.tweens.add({ targets: f, scaleY: 0.6 * ART_SCALE, duration: Phaser.Math.Between(150, 280), yoyo: true, repeat: -1 });
-    });
-
-    // the mountain grows into view on the right
-    const mx = 614, mw = 260, mh = 110;
-    const g = this.add.graphics().setScrollFactor(0.3).setDepth(-2);
-    g.fillStyle(0x5a4030).fillTriangle(mx - mw / 2, gy, mx + mw / 2, gy, mx, gy - mh);
-    g.fillStyle(0x6e5038).fillTriangle(mx, gy - mh, mx + mw / 2, gy, mx + 20, gy);
-    this.add.rectangle(mx + 6, gy - mh + 10, 4, 3, 0x140c10).setScrollFactor(0.3).setDepth(-1.9);
-
-    // decorations (no bodies)
-    for (let x = 90; x < WORLD_W; x += 150) {
-      this.add.image(x + (x * 7) % 40, gy, 'rock').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-1);
-    }
-    for (let x = 60; x < WORLD_W; x += 110) {
-      this.add.rectangle(x + (x * 13) % 50, gy, 5, 5 + (x % 4), 0x6a5a2a).setOrigin(0.5, 1).setDepth(-1);
-    }
-
-    // signpost at tile 10
-    const sx = 10 * TILE;
-    this.add.rectangle(sx, gy, 2, 14, 0x6a4a2a).setOrigin(0.5, 1).setDepth(-0.5);
-    this.add.rectangle(sx, gy - 14, 30, 10, 0x8a6a3a).setOrigin(0.5, 1).setDepth(-0.5);
-    this.add.text(sx, gy - 19, 'CAVES →', { fontFamily: 'monospace', fontSize: '6px', color: '#2a1a0a' })
-      .setOrigin(0.5).setDepth(-0.4);
-  }
-
-  platform(tx, ty, w, h = 1) {
-    const t = this.add.tileSprite(tx * TILE, ty * TILE, w * TILE, h * TILE, 'ground').setOrigin(0);
-    this.terrain.add(t);
-    return t;
+    buildWildernessArt(this, WORLD_W, (x) => groundTop(x));
+    const layer = (key, f, depth, x = 0) => this.add.image(x, 0, key).setOrigin(0).setScale(ART_SCALE)
+      .setScrollFactor(f, 0).setDepth(depth);
+    layer('wild-sky', WILD.sky, -3);
+    layer('wild-far', WILD.far, -2.8);
+    layer('wild-hills', WILD.hills, -2.6);
+    // the mountain rises on the right from about halfway; its slope starts near the left of the screen at the end
+    layer('wild-massif', WILD.massif, -2.4, (WORLD_W - GAME_WIDTH) * WILD.massif + 60);
+    this.add.image(0, GROUND_Y0, 'wild-ground').setOrigin(0).setScale(ART_SCALE).setDepth(-0.8);
+    this.add.image(CLIFF_X - 12, (STREET - 1) * TILE, 'wild-cliff').setOrigin(0, 1).setScale(ART_SCALE).setDepth(-0.9);
+    this.add.image(10 * TILE, groundTop(10 * TILE), 'wild-sign').setOrigin(0.5, 1).setScale(ART_SCALE).setDepth(-0.5);
   }
 
   buildLevel() {
-    const solid = (tx, ty, w) => this.platform(tx, ty, w, Math.ceil(WORLD_H / TILE) - ty);
-    solid(0, STREET, 20);
-    solid(20, STREET - 1, 14);
-    solid(34, STREET, 28);
-    solid(62, STREET - 1, 12);
-    solid(74, STREET, 26);
-    // 1-tile rocks
-    [[26, STREET - 1], [58, STREET]].forEach(([tx, ty]) => {
-      const r = this.add.image(tx * TILE + TILE / 2, ty * TILE, 'rock').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-0.2);
+    // physics only; the painted ground (wild-ground) follows the same LAYOUT
+    for (const [tx, ty, w] of LAYOUT) {
+      const t = this.add.zone(tx * TILE, ty * TILE, w * TILE, WORLD_H - ty * TILE).setOrigin(0);
+      this.terrain.add(t);
+    }
+    // boulders in the way: sandstone early, the mountain's rock near the end
+    [[19, 'wild-rock0'], [48, 'wild-rock1']].forEach(([tx, key]) => {
+      const x = tx * TILE + TILE / 2;
+      const r = this.add.image(x, groundTop(x) + 1, key).setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-0.2);
       this.terrain.add(r);
     });
   }
@@ -128,16 +114,103 @@ export default class WildernessScene extends Phaser.Scene {
     });
   }
 
+  // Genesis 19:26, as a cinematic: the view letterboxes, Lot's wife stops and looks back at Sodom, a comet
+  // streaks in from the burning city and strikes her, and she is a pillar of salt. The family grieves, then
+  // Lot says they must go on, and play resumes. Only if she is still alive when they get here.
+  async saltWife() {
+    this.cutscene = true;
+    const { lot, family } = this;
+    const [wife, ...girls] = family.members;
+    const alive = girls.filter(g => g.state !== 'lost');
+    const wait = (ms) => new Promise(r => this.time.delayedCall(ms, r));
+    const tween = (cfg) => new Promise(r => this.tweens.add({ ...cfg, onComplete: r }));
+    const cam = this.cameras.main;
+    lot.body.setAcceleration(0, 0);
+    lot.body.setVelocityX(0);
+    alive.forEach(g => { g.anims.stop(); g.setFrame(0); });
+
+    // letterbox
+    const bars = [0, 1].map(i => this.add.rectangle(0, i ? 180 : 0, GAME_WIDTH, 22, 0x000000)
+      .setOrigin(0, i).setScrollFactor(0).setDepth(940).setScale(1, 0));
+    tween({ targets: bars, scaleY: 1, duration: 400, ease: 'Quad.out' });
+    await wait(300);
+
+    // she looks back
+    wife.lastLook();
+    await wait(1300);
+
+    // the comet
+    if (!this.textures.exists('comet')) pixTexture(this, 'comet', comet());
+    const head = { x: wife.x, y: wife.y - 12 };
+    const from = { x: viewX(cam) - 30, y: viewY(cam) - 30 };
+    const c = this.add.image(from.x, from.y, 'comet').setScale(ART_SCALE).setDepth(5)
+      .setOrigin(COMET_HEAD / 72).setRotation(Math.atan2(head.y - from.y, head.x - from.x) - Math.PI / 4);
+    const sparks = this.time.addEvent({ delay: 30, loop: true, callback: () => {
+      const p = this.add.image(c.x, c.y, 'pixel').setTint(Phaser.Utils.Array.GetRandom([0xffb848, 0xf07a24, 0xffe8a0])).setDepth(4);
+      this.tweens.add({ targets: p, x: p.x + Phaser.Math.Between(-6, 6), y: p.y + Phaser.Math.Between(-4, 8), alpha: 0,
+        duration: 350, onComplete: () => p.destroy() });
+    } });
+    shake(this, 900, 0.002);
+    await tween({ targets: c, x: head.x, y: head.y, duration: 900, ease: 'Quad.in' });
+    sparks.remove();
+    c.destroy();
+
+    // impact: she is salt
+    [this.view.main, this.view.bg].forEach(c => c.flash(250, 255, 255, 255));
+    shake(this, 300, 0.012);
+    wife.becomePillar();
+    puff(this, wife.x, wife.y - 10, 0xf4f7fa, 14);
+    for (let i = 0; i < 14; i++) {
+      const p = this.add.image(wife.x, wife.y - 10, 'pixel').setTint(i % 2 ? 0xf4f7fa : 0xa8b2c2).setDepth(4);
+      this.tweens.add({ targets: p, x: p.x + Phaser.Math.Between(-18, 18), y: STREET * TILE - 1, duration: Phaser.Math.Between(400, 700),
+        ease: 'Quad.in', onComplete: () => this.tweens.add({ targets: p, alpha: 0, delay: 800, duration: 400, onComplete: () => p.destroy() }) });
+    }
+    await wait(900);
+
+    // grief
+    const caption = this.add.text(GAME_WIDTH / 2, 180 - 11, t('wife.caption'), {
+      fontFamily: 'monospace', fontSize: '8px', color: '#fff' }).setOrigin(0.5).setScrollFactor(0).setDepth(950).setAlpha(0);
+    tween({ targets: caption, alpha: 1, duration: 500 });
+    lot.setFlipX(true);
+    alive.forEach(g => g.setFlipX(true)); // she was walking behind them: they turn back to her
+    const tears = this.time.addEvent({ delay: 260, loop: true, callback: () => alive.forEach(g => {
+      const t = this.add.image(g.x + (g.flipX ? -2 : 2), g.y - 13, 'pixel').setTint(0x7ab8ff).setDepth(4);
+      this.tweens.add({ targets: t, y: t.y + 7, alpha: 0, duration: 500, onComplete: () => t.destroy() });
+    }) });
+    await wait(900);
+    const lines = alive.length ? [[alive[0], t('say.mother'), 1400], ...(alive[1] ? [[alive[1], null, 1000]] : [])] : [];
+    for (const [g, text, ms] of lines) { speech(this, g.x, g.y - 20, ms, text); await wait(ms + 200); }
+    tears.remove();
+
+    // Lot: they must go on
+    for (const [text, ms] of [[t('say.cannotStay'), 1300], [t('say.run'), 1500]]) {
+      speech(this, lot.x, lot.body.top - 3, ms, text);
+      await wait(ms + 200);
+    }
+    lot.setFlipX(false);
+    await wait(300);
+    tween({ targets: [...bars, caption], scaleY: 0, alpha: 0, duration: 400, ease: 'Quad.in' });
+    this.cutscene = false;
+  }
+
   update(time, delta) {
     this.controls.update();
     if (this.controls.restartPressed) { this.scene.restart(); return; }
 
-    if (!this.exiting) {
-      this.lot.update(this.controls, delta);
-      this.trail.record(this.lot.x, this.lot.body.bottom, this.lot.facing, this.lot.onGround);
-      if (this.lot.x > WORLD_W - 40) this.finish();
+    const wife = this.family.members[0];
+    if (!this.cutscene && !this.exiting && wife.state === 'following' && this.lot.x > SALT_X && this.lot.onGround
+      && wife.trail.sample(wife.spacing).onGround) this.saltWife();
+
+    if (this.cutscene) {
+      this.lot.update({}, delta); // stands still; the cutscene poses the family
+    } else {
+      if (!this.exiting) {
+        this.lot.update(this.controls, delta);
+        this.trail.record(this.lot.x, this.lot.body.bottom, this.lot.facing, this.lot.onGround);
+        if (this.lot.x > CLIFF_X - 16) this.finish();
+      }
+      this.family.update(delta);
     }
-    this.family.update(delta);
     this.hud.update();
 
     if (this.debugText) {

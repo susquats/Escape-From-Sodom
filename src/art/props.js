@@ -62,7 +62,10 @@ function ventJet(f) {
   const w = 24, h = 64, p = new Pix(w, h), ph = (f / 3) * Math.PI * 2;
   for (let y = 1; y < h; y++) {
     const v = (h - 1 - y) / (h - 2);
-    const half = 7 + (1 - v) * 4.5 + Math.sin(v * 14 + ph) * 1.4 + (noise1(v * 9 + f * 3.3, 5) - 0.5) * 2.5; // fills the hitbox
+    // fills the hitbox at the base, then licks in to a ragged point so the top never ends in a flat edge
+    const taper = 1 - Math.pow(clamp((v - 0.55) / 0.45, 0, 1), 1.5);
+    const half = (7 + (1 - v) * 4.5 + Math.sin(v * 14 + ph) * 1.4 + (noise1(v * 9 + f * 3.3, 5) - 0.5) * 2.5) * taper;
+    if (half < 0.6) continue;
     const cx = 11.5 + Math.sin(v * 6 + ph) * 1.2 * v;
     for (let x = 0; x < w; x++) {
       const d = Math.abs(x - cx) / Math.max(1, half);

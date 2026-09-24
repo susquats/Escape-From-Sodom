@@ -1,9 +1,39 @@
 // ASCII level map for Act I. Each section is 23 rows of equal-length strings, joined left to right.
 // Row 17 is the normal street surface (rows 17-22 are ground). Rows 0-8 are mostly sky.
 // The last 6 columns of the map are empty: that is the fire chasm.
-// Legend: see README (Milestone 8) and parseLevel.js.
+// Legend: see README (Milestone 8) and parseLevel.js. 'A' is where the angels' cinematic starts.
 
 export const SODOM_SECTIONS = [
+  {
+    // the city before the destruction: flat ground, low walls and a few Sodomites to learn to jump and stomp.
+    // Lot walks home; at his house ('A' in the next section) the angels come out and the city starts burning.
+    name: 'Evening streets',
+    rows: [
+      '................................................................',
+      '................................................................',
+      '................................................................',
+      '................................................................',
+      '................................................................',
+      '................................................................',
+      '................................................................',
+      '................................................................',
+      '................................................................',
+      '................................................................',
+      '...................................bbbbbbbbbbbb.................',
+      'bbbbbbbbbb.........................bbwbbbwbbwbb.................',
+      'bbwbbbwbbb......bbbbbbbbbbbb.......bbbbbbbbbbbb........bbbbbbbbb',
+      'bbbbbbbbbb......bbwbbbbwbbbb.......bbbbbbbbbbbb........bbwbbbwbb',
+      'bbbbbbbbbb......bbbbbbbbbbbb......====bbbbbbbbb........bbbbbbbbb',
+      'bbbbbbbbbb......bbbbbbbbbbbb.TTT...bbbbbbbbbbbb..TTTTT.bbbbbbbbb',
+      'bbbbLbbbbb..TT..bbbbbbEbbbbb.BBB...bbbbbbbEbbbb.TBBBBB.bbbEbbbbb',
+      '################################################################',
+      '################################################################',
+      '################################################################',
+      '################################################################',
+      '################################################################',
+      '################################################################',
+    ],
+  },
   {
     name: 'Home street',
     rows: [
@@ -23,7 +53,7 @@ export const SODOM_SECTIONS = [
       'bbbbbbbb................................',
       'bbbbbbbb.............TTTTTTT............',
       'bbbbbbbb.............BBBBBBB............',
-      'bbbbbbbb..L...PPPP...BBBBBBB.....V......',
+      'bbbbbbbb..A...PPPP...BBBBBBB.....V......',
       '########################################',
       '########################################',
       '########################################',
@@ -72,7 +102,7 @@ export const SODOM_SECTIONS = [
       '........bbbwbbbbwbbbbbbwbbbbbwbbbbwbb...bbbbbbbbbbbbbb......',
       '........bbbbbbbbbbbbbbbbbbbbbbbbbbbbb...bbbwbbbbwbbbbb......',
       '........bbbbbbbbbbbbbbbbbbbbbbbbbbbbb...bbbbbbbbbbbbbb......',
-      '........bbbbbbbbbbbbbbbbbbbbbbbbbbbbb...bbbbbbbbHbbbbb......',
+      '........bbbbbbbbbbbbbbbbbbbbbbbbbbbbb...bbbbbbbbbbbbbb......',
       '........bbwbbbbbbbbbwbbbbbwbbbbbbbbbb...bbbbbbbbbbbbbb......',
       '........bbbbbbbbbbbbbbbbbbbbbbbbbbbbb...bbbbbbbbbbbbbb......',
       '........bbbbbbbbbbbbbbbbbbbbbbbbbbbbb...bbbbbbbbbbbbbb......',
@@ -101,7 +131,7 @@ export const SODOM_SECTIONS = [
       '......................................................................',
       '......................................................................',
       '......................................................................',
-      '......................................................................',
+      '...........................................................H..........',
       'bbbbbbbbbbbbbb........................................................',
       'bbbbbbbbbbbbbb.....bbbbbbbbbbb........................................',
       'bbwbbbbbwbbbbb.bb..bbbbbbbbbbb......bbbbbbbbbbbb......................',
@@ -129,7 +159,7 @@ export const SODOM_SECTIONS = [
       '......bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.....',
       '......bbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbbbbwbbbbbb.....',
       '......bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.....',
-      '......bbbbbbbbHbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.....',
+      '......bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.....',
       '......bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.....',
       '......bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.....',
       '......bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.....',
@@ -155,7 +185,7 @@ export const SODOM_SECTIONS = [
       '......bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.......',
       '......bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.......',
       '......bbbbbbbbbbbbbbbbb====bbbbbbbbb====bbbbbbbbbEbbbbbbbbbbbbb.......',
-      '......bbbbbbbbbbbbbbbbVbbbbbbbbbbEbbbbVbbbbbbbTTTTTTTTTTTbbbbTTT......',
+      '......bbbbbbbbbbbbbbHbVbbbbbbbbbbEbbbbVbbbbbbbTTTTTTTTTTTbbbbTTT......',
       '..................TTTTTTTTTT...TTTTTTTTTTTT...BBBBBBBBBBB....BBB......',
       '................TTBBBBBBBBBB...BBBBBBBBBBBB...BBBBBBBBBBB.==.BBB......',
       '..............TTBBBBBBBBBBBB...BBBBBBBBBBBB...BBBBBBBBBBB....BBBTT....',

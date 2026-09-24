@@ -5,19 +5,21 @@ import { ART_SCALE } from '../view.js';
 export default class RunHud {
   constructor(scene) {
     this.icons = ['wife', 'daughter1', 'daughter2'].map((key, i) => {
-      const icon = scene.add.image(6 + i * 12, 6, key).setOrigin(0).setScale(0.5 * ART_SCALE)
+      const icon = scene.add.image(6 + i * 12, 6, `${key}_front`).setOrigin(0).setScale(0.5 * ART_SCALE)
         .setScrollFactor(0).setDepth(960);
       const x = scene.add.image(6 + i * 12 + 2, 6 + 2, 'x').setOrigin(0).setScrollFactor(0).setDepth(961);
       return { key, icon, x };
     });
+    this.scene = scene;
     this.update();
   }
 
   update() {
+    const hide = !!(this.scene.cutscene || this.scene.atTop);
     this.icons.forEach(({ key, icon, x }) => {
       const lost = run.lost.has(key);
-      icon.setAlpha(lost ? 0.3 : 1);
-      x.setVisible(lost);
+      icon.setVisible(!hide).setAlpha(lost ? 0.3 : 1);
+      x.setVisible(lost && !hide);
     });
   }
 }

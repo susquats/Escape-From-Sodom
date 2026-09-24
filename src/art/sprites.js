@@ -14,19 +14,6 @@ const grid = (w, h, fn) => Array.from({ length: h }, (_, y) => Array.from({ leng
 // Small deterministic noise for texture speckles.
 const hash = (x, y) => (((x * 73856093) ^ (y * 19349663)) >>> 0) % 1000;
 
-// Cave mouth 56x52: rocky rim around a dark arch.
-const caveFrame = () => grid(56, 52, (x, y) => {
-  const dx = (x - 27.5) / 28, dy = (y - 52) / 52;
-  const d = dx * dx + dy * dy;
-  if (d > 1) return '.';
-  if (d > 0.74) {
-    const h = hash(x >> 1, y >> 1) % 7;
-    return h === 0 ? 'x' : h === 1 ? 'K' : (y < 12 || dx < -0.5 ? 'Z' : 'X');
-  }
-  if (d > 0.66) return 'K';
-  return 'D';
-});
-
 // Rock 28x20: lumpy boulder lit from the top-left.
 const rockFrame = () => grid(28, 20, (x, y) => {
   const dx = (x - 13.5) / 13.5, dy = (y - 19) / 19;
@@ -53,7 +40,6 @@ export const SPRITES = {
   ...ITEM_SPRITES,
   ...PROP_SPRITES,
   ...FLIGHT_SPRITES,
-  cave: { w: 56, h: 52, frames: [caveFrame()] },
   rock: { w: 28, h: 20, frames: [rockFrame()] },
   ledge: { w: 32, h: 12, frames: [ledge('Z', 'X', 'x', false)] },
   ledge_crumble: { w: 32, h: 12, frames: [ledge('5', '6', 'x', true)] },

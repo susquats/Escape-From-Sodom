@@ -2,6 +2,7 @@ import { ANGEL, FAMILY } from '../config.js';
 import { LOT_FRAMES } from '../art/characters.js';
 import { popText } from '../fx.js';
 import { flash, viewX, viewY, ART_SCALE } from '../view.js';
+import { t } from '../i18n.js';
 
 export default class AngelBoost {
   constructor(scene, lot, family) {
@@ -34,7 +35,7 @@ export default class AngelBoost {
       scene.tweens.add({ targets: a, x: t.x, y: t.y, duration: ANGEL.swoopMs,
         onComplete: () => { if (i === 0) this.attached = true; } });
     });
-    popText(scene, lot.x, lot.y - 24, 'HALLELUJAH!', '#ffe14a');
+    popText(scene, lot.x, lot.y - 24, t('pop.hallelujah'), '#ffe14a');
     flash(scene, 150, 255, 240, 180);
   }
 
@@ -62,6 +63,8 @@ export default class AngelBoost {
   update(delta) {
     if (this.timer <= 0) return;
     this.timer -= delta;
+    // never drop Lot into a pit: keep flying until there is real ground below
+    if (this.timer <= 0 && this.scene.overPit(this.lot)) this.timer = 1;
     if (this.timer <= 0) { this.end(); return; }
     const time = this.scene.time.now;
     const bob = Math.sin(time / 90) * 1.5;
@@ -76,6 +79,9 @@ export default class AngelBoost {
 
   end() {
     this.lot.setBoost(false);
+    // the family lands right where the angels leave them, so stay invulnerable a little longer
+    this.family.protect(ANGEL.graceMs);
+    this.scene.grace(ANGEL.graceMs);
     this.lot.clearTint();
     this.lot.setVisible(true);
     if (this.follower) { this.follower.destroy(); this.follower = null; }

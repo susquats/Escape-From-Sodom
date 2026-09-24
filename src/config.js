@@ -20,7 +20,7 @@ export const MOVE = {
 };
 
 export const FAMILY = {
-  spacing: { wife: 18, daughter1: 34, daughter2: 50 }, // path px behind Lot
+  spacing: { daughter1: 18, daughter2: 34, wife: 50 }, // path px behind Lot: the mother walks at the back
   trailMaxLength: 400,   // px of path history kept (must exceed largest spacing + margin)
   rejoinSpeed: 260,      // px/s while flying back to slot after rescue
   invulnMs: 1000,        // blinking protection after rejoining
@@ -74,6 +74,7 @@ export const ANGEL = {
   runSpeed: 185,        // Lot's boosted max speed
   accelMultiplier: 1.6,
   lotGap: 18,           // path px Lot and the family fall back while the angels lead
+  graceMs: 2000,        // invulnerability for Lot and the family after the angels leave
   swoopMs: 350,         // entry/exit flight time
 };
 
@@ -97,7 +98,7 @@ export const FLIGHT = {
 };
 
 export const MOUNTAIN = {
-  height: 4000,          // world height; a perfect climb is ~82 px/s, so ~50 s
+  height: 2400,          // world height; a perfect climb is ~82 px/s, so ~30 s
   bounceVelocity: 330,   // auto-bounce (~60 px apex with gravity 900)
   columnLeft: 56,
   columnRight: 264,
@@ -106,12 +107,12 @@ export const MOUNTAIN = {
   maxDx: 70,             // max horizontal offset from the previous platform (a bounce only gives ~50 px of air travel)
   widthStart: 48,
   widthEnd: 28,
-  movingFrom: 0.4,       // fraction of the climb after which moving platforms can appear
+  movingFrom: 0.35,      // fraction of the climb after which moving platforms can appear
   movingChance: 0.25,
   movingRange: 40,       // px each side
   movingMs: 1600,
-  crumbleFrom: 0.55,
-  crumbleChance: 0.2,
+  crumbleFrom: 0.1,      // crumbling ledges come first, moving ones a little later
+  crumbleChance: 0.25,
   crumbleRespawnMs: 2500,
   cameraLead: 110,       // Lot's screen y when the camera is pushing up
   topY: 70,              // y of the final platform

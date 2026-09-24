@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import Controls from '../input/Controls.js';
 import { run, resetRun } from '../runState.js';
-import { creditLines, RATINGS } from '../credits.js';
+import { creditLines } from '../credits.js';
 import { setupView, fadeIn, fadeOut } from '../view.js';
+import { t } from '../i18n.js';
 
 const SCROLL_SPEED = 14;  // px/s
 const FAST_MUL = 4;
@@ -51,15 +52,15 @@ export default class CreditsScene extends Phaser.Scene {
       const cx = GAME_WIDTH / 2;
       const baseY = 50;
 
-      this.add.text(cx, baseY, `FAMILY SAVED: ${n}/3`, STROKE).setOrigin(0.5);
-      this.add.text(cx, baseY + 14, RATINGS[n] || RATINGS[0], {
+      this.add.text(cx, baseY, t('card.saved', { n }), STROKE).setOrigin(0.5);
+      this.add.text(cx, baseY + 14, t(`rating.${n}`), {
         fontFamily: 'monospace', fontSize: '8px', color: '#ffe14a',
         stroke: '#000', strokeThickness: 2,
       }).setOrigin(0.5);
-      this.add.text(cx, baseY + 32, 'THANKS FOR PLAYING', STROKE).setOrigin(0.5);
+      this.add.text(cx, baseY + 32, t('card.thanks'), STROKE).setOrigin(0.5);
 
       const touch = this.sys.game.device.input.touch;
-      const prompt = this.add.text(cx, baseY + 52, touch ? 'TAP TO PLAY AGAIN' : 'SPACE TO PLAY AGAIN', STROKE).setOrigin(0.5);
+      const prompt = this.add.text(cx, baseY + 52, t(touch ? 'card.againTouch' : 'card.again'), STROKE).setOrigin(0.5);
       this.tweens.add({ targets: prompt, alpha: 0.15, duration: 520, yoyo: true, repeat: -1 });
 
       this.showingCard = true;

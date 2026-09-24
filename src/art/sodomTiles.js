@@ -3,9 +3,11 @@
 // 8x8-tile pattern period, depth below the street); each distinct description is painted once into the
 // tileset. Two visual layers come out: `back` (dark ruined walls and windows behind everything) and `front`
 // (sandstone solids, columns, awnings, the city wall). Collision still uses the plain 16px layer.
+// With `calm` the same map is painted as the intact city the night before: whole walls with flat tops, no
+// breaches or cracks, lamplight instead of fire in the windows, cool moonlit ramps (ENV_NIGHT).
 // Style reference: the Sodom panel of art/reference/style-sheet.webp.
 import { Pix, hash, noise1, noise2, dith, pixTexture } from './pix.js';
-import { ENV } from './palette.js';
+import { ENV, ENV_NIGHT } from './palette.js';
 import { TILE_CHARS } from '../levels/parseLevel.js';
 
 const TS = 32;             // texture px per tile
@@ -296,14 +298,14 @@ function paintWall(g, p) {
 
 // ---------------------------------------------------------------------------------------------------------
 // Back walls ('b') and windows ('w'): dark maroon brick, ruined tops, fire glow near the street.
-function paintBack(g, p) {
+function paintBack(g, p, calm) {
   const wx0 = p.cx * TS, wy0 = p.cy * TS;
   for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
     const t = brick(wx0 + x, wy0 + y, 16, 8, 6);
     g.set(x, y, t === MORTAR ? MORTAR : t - 1);
     // a few bricks knocked out: dark hollow, lit lower lip
     const course = (wy0 + y) >> 3, bx = ((wx0 + x + (course & 1 ? 8 : 0)) >> 4) % 16;
-    if (t !== MORTAR && hash(bx, course, 64) < 0.035) g.set(x, y, (wy0 + y) % 8 === 6 ? 3 : 0);
+    if (!calm && t !== MORTAR && hash(bx, course, 64) < 0.035) g.set(x, y, (wy0 + y) % 8 === 6 ? 3 : 0);
   }
   if (p.pil) {
     // dim sandstone pilaster dividing the wall into bays (stone tones are stored as 40 + index)
@@ -313,7 +315,10 @@ function paintBack(g, p) {
       g.set(9 + i, y, joint ? MORTAR : (wy0 + y) % 8 === 0 && t > 40 ? t + 1 : t);
     });
   }
-  if (p.U) {
+  if (p.U && calm) {
+    // intact top: a coping course with a moonlit edge
+    for (let x = 0; x < TS; x++) { g.set(x, 0, OUTLINE); g.set(x, 1, 6); g.set(x, 2, 5); g.set(x, 3, 5); g.set(x, 4, OUTLINE); }
+  } else if (p.U) {
     // broken top: a ragged profile (0-3 courses deep) of whole missing bricks; p.ax = absolute px of the tile
     const depthAt = (bx) => Math.min(3, Math.floor(Math.pow(noise1(bx * 0.45, 57), 1.6) * 4 + (hash(bx, 0, 58) < 0.2 ? 1 : 0)));
     for (let y = 0; y < 32; y++) for (let x = 0; x < TS; x++) {
@@ -326,7 +331,7 @@ function paintBack(g, p) {
       if (y === 0 || g.get(x, y - 1) === EMPTY) { g.set(x, y, 6); if (g.get(x, y + 1) >= 0) g.set(x, y + 1, 5); }
     }
   }
-  if (p.D) {
+  if (p.D && !calm) {
     // ragged underside over a breach: missing bricks counted up from the bottom, dark broken edge
     const depthAt = (bx) => Math.min(2, Math.floor(noise1(bx * 0.5, 59) * 2.6));
     for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
@@ -347,18 +352,19 @@ function paintBack(g, p) {
     if (p.L && g.get(xl, y) !== EMPTY) { g.set(xl, y, OUTLINE); g.add(xl + 1, y, 1); }
     if (p.R && g.get(xr, y) !== EMPTY) g.set(xr, y, OUTLINE);
   }
-  if (p.win) paintWindow(g);
+  if (p.win) paintWindow(g, calm);
 }
 
 // Arched window with fire inside. Glow tones are stored as 20 + glow index (see colorize).
-function paintWindow(g) {
+function paintWindow(g, calm) {
   const cx = 15.5, top = 12, r = 6.5;
   for (let y = 3; y <= 29; y++) for (let x = 6; x <= 25; x++) {
     const dx = x - cx, inArch = y >= top ? Math.abs(dx) <= r : dx * dx + (y - top) ** 2 <= r * r;
     const inFrame = y >= top ? Math.abs(dx) <= r + 2 : dx * dx + (y - top) ** 2 <= (r + 2.2) ** 2;
     if (y > 26) continue;
     if (inArch) {
-      const k = clamp((y - 12) / 14, 0, 1) * 5.2; // 0 dark at the top -> bright at the sill
+      // fire: dark at the top -> bright at the sill; lamplight: a steady amber glow
+      const k = calm ? 2.2 + clamp((y - 8) / 18, 0, 1) * 2.4 : clamp((y - 12) / 14, 0, 1) * 5.2;
       g.set(x, y, 20 + clamp(dith(k, x, y), 0, 5));
     } else if (inFrame) {
       // stone voussoirs around the opening
@@ -372,14 +378,14 @@ function paintWindow(g) {
 }
 
 // ---------------------------------------------------------------------------------------------------------
-function colorize(g, pix, ox, oy, ramp, p, warmRamp, warm = () => false) {
+function colorize(g, pix, ox, oy, ramp, p, env, warmRamp, warm = () => false) {
   for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) {
     const v = g.get(x, y);
     if (v === EMPTY) continue;
     let c;
     if (v === OUTLINE) c = ramp[0];
-    else if (v >= 40) c = ENV.stone[v - 40];
-    else if (v >= 19) c = ENV.glow[v - 19];
+    else if (v >= 40) c = env.stone[v - 40];
+    else if (v >= 19) c = env.glow[v - 19];
     else {
       const dark = depthShift(p, x, y);
       // warm fire light near the street for back walls
@@ -390,11 +396,13 @@ function colorize(g, pix, ox, oy, ramp, p, warmRamp, warm = () => false) {
   }
 }
 
-function paintTile(pix, ox, oy, p) {
+function paintTile(pix, ox, oy, p, calm) {
   if (p.t === '=') return paintAwning(pix, ox, oy, p);
+  const env = calm ? ENV_NIGHT : ENV;
   const g = new Tones();
   if (p.t === 'b') {
-    paintBack(g, p);
+    paintBack(g, p, calm);
+    if (calm) return colorize(g, pix, ox, oy, env.dark, p, env);
     // warm fire light: rising from the street, and spilling around a glowing window (p.sp = its offset in tiles)
     const warm = (x, y) => {
       if (p.base && dith(clamp((y - 6) / 26, 0, 1) * 1.4, x, y) > 0) return true;
@@ -402,17 +410,17 @@ function paintTile(pix, ox, oy, p) {
       const d = Math.hypot(x - 15.5 - p.sp[0] * TS, y - 18 - p.sp[1] * TS);
       return dith(clamp(1 - d / 50, 0, 1) * 2, x, y) > 0;
     };
-    return colorize(g, pix, ox, oy, ENV.dark, p, ENV.darkWarm, warm);
+    return colorize(g, pix, ox, oy, env.dark, p, env, env.darkWarm, warm);
   }
-  if (p.t === 'P') { paintColumn(g, p); return colorize(g, pix, ox, oy, ENV.stone, p); }
-  if (p.t === 'W') { paintWall(g, p); return colorize(g, pix, ox, oy, ENV.wall, p); }
+  if (p.t === 'P') { paintColumn(g, p); return colorize(g, pix, ox, oy, env.stone, p, env); }
+  if (p.t === 'W') { paintWall(g, p); return colorize(g, pix, ox, oy, env.wall, p, env); }
   paintSand(g, p);
-  colorize(g, pix, ox, oy, ENV.sand, p);
+  colorize(g, pix, ox, oy, env.sand, p, env);
 }
 
 // ---------------------------------------------------------------------------------------------------------
 // Describe each cell, paint every distinct description once, return tile index grids for both layers.
-export function buildSodomTiles(scene, data, key = 'sodom-tiles') {
+export function buildSodomTiles(scene, data, key = 'sodom-tiles', { calm = false } = {}) {
   const rows = data.length, cols = data[0].length;
   const ch = (c, r) => {
     if (r < 0) return '.';
@@ -436,7 +444,7 @@ export function buildSodomTiles(scene, data, key = 'sodom-tiles') {
   };
   const holes = [];
   for (let r = 0; r < STREET_ROW - 4; r++) for (let c = 0; c < cols; c++) {
-    if (ch(c, r) === 'b' && interior(c, r) && noise2(c * 0.22, r * 0.38, 91) > 0.63) holes.push([c, r]);
+    if (!calm && ch(c, r) === 'b' && interior(c, r) && noise2(c * 0.22, r * 0.38, 91) > 0.63) holes.push([c, r]);
   }
   holes.forEach(([c, r]) => { back[r][c] = false; });
   const isBack = (c, r) => r >= 0 && r < rows && back[r][clamp(c, 0, cols - 1)];
@@ -477,7 +485,7 @@ export function buildSodomTiles(scene, data, key = 'sodom-tiles') {
       } else if (t === 'P') {
         p = { t, cx: 0, cy: cy & 1, U: ch(c, r - 1) !== 'P', D: ch(c, r + 1) !== 'P',
           PL: ch(c - 1, r) === 'P' && ch(c - 1, r - 1) !== 'P' && ch(c, r - 1) !== 'P', PR: ch(c + 1, r) === 'P' && ch(c + 1, r - 1) !== 'P' && ch(c, r - 1) !== 'P',
-          backed: back[r][c], cracked: hash(c, r, 61) < 0.2, gr: -1 };
+          backed: back[r][c], cracked: !calm && hash(c, r, 61) < 0.2, gr: -1 };
       } else if (t === '=') {
         p = { t, cx, L: ch(c - 1, r) !== '=', R: ch(c + 1, r) !== '=', gr: -1 };
       } else if (t === 'W') {
@@ -492,7 +500,7 @@ export function buildSodomTiles(scene, data, key = 'sodom-tiles') {
   const pix = new Pix(PER_ROW * STRIDE, Math.ceil(descs.length / PER_ROW) * STRIDE);
   descs.forEach((p, i) => {
     const ox = 1 + (i % PER_ROW) * STRIDE, oy = 1 + Math.floor(i / PER_ROW) * STRIDE;
-    paintTile(pix, ox, oy, p);
+    paintTile(pix, ox, oy, p, calm);
     const d = pix.data, W = pix.w;
     for (let k = -1; k <= TS; k++) {
       const x = clamp(k, 0, TS - 1);

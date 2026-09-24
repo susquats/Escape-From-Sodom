@@ -23,7 +23,8 @@ export default class Carrier {
     const hanger = (x, key, startFrame) =>
       scene.add.sprite(x, -9, key).setScale(ART_SCALE).setOrigin(0.5, 0).play({ key: `${key}-hang`, startFrame });
     this.danglers = [];
-    [['daughter1', -12, 0], ['lot', -4, 0], ['wife', 4, 1], ['daughter2', 12, 1]].forEach(([key, px, f]) => {
+    // flying right: Lot in front, the daughters, the mother at the back
+    [['wife', -12, 1], ['daughter2', -4, 0], ['daughter1', 4, 1], ['lot', 12, 0]].forEach(([key, px, f]) => {
       if (run.lost.has(key)) return;
       const d = hanger(px, key, f);
       this.view.add(d);

@@ -4,10 +4,12 @@ import Carrier from '../objects/Carrier.js';
 import { COMET_HEAD } from '../art/items.js';
 import RunHud from '../ui/RunHud.js';
 import Controls from '../input/Controls.js';
-import { popText, puff, loseLife } from '../fx.js';
+import { popText, puff, loseLife, speech } from '../fx.js';
+import { run } from '../runState.js';
 import { setupView, fadeIn, fadeOut, shake, flash, ART_SCALE } from '../view.js';
 import { buildingTexture } from '../art/flightBuildings.js';
 import { buildSodomBackdrop } from '../art/sodomBackdrop.js';
+import { t } from '../i18n.js';
 
 // Seconds after the first flap; obstacles spawn at x = GAME_WIDTH + 20.
 // Pipes reach the carrier ~2.9 s after spawning and fireballs ~1.7 s, so fireballs are timed to arrive at
@@ -73,10 +75,10 @@ export default class FlightScene extends Phaser.Scene {
     this.controls = new Controls(this, { touchButtons: ['restart'] });
     this.input.on('pointerdown', () => { this.tapQueued = true; });
 
-    this.title = this.add.text(GAME_WIDTH / 2, 50, 'ACT II\nTHE ANGELS', { ...STROKE, fontSize: '12px' })
+    this.title = this.add.text(GAME_WIDTH / 2, 50, t('act2'), { ...STROKE, fontSize: '12px' })
       .setOrigin(0.5).setAlign('center').setDepth(900);
     this.tweens.add({ targets: this.title, alpha: 0, delay: 1500, duration: 500 });
-    this.hint = this.add.text(GAME_WIDTH / 2, 120, 'TAP or SPACE to flap', STROKE).setOrigin(0.5).setDepth(900);
+    this.hint = this.add.text(GAME_WIDTH / 2, 120, t('hint.flap'), STROKE).setOrigin(0.5).setDepth(900);
 
     fadeIn(this, 400);
 
@@ -269,7 +271,7 @@ export default class FlightScene extends Phaser.Scene {
         onComplete: () => {
           if (i !== 0) return;
           shake(this, 150, 0.008);
-          popText(this, 160, 140, 'THUD!');
+          popText(this, 160, 140, t('pop.thud'));
           people.forEach(q => puff(this, v.x + q.x, GROUND_Y - 2, 0xd9b774));
         } });
     });
@@ -278,8 +280,26 @@ export default class FlightScene extends Phaser.Scene {
       people.forEach(p => { p.anims.stop(); p.setFrame(0); }); // back on their feet
       this.tweens.add({ targets: people, angle: 0, duration: 150 });
     });
-    this.time.delayedCall(2150, () => {
-      const cam = this.cameras.main;
+    // the angels give back anyone lost in the flight, and Lot rejoices
+    const lostKeys = ['wife', 'daughter1', 'daughter2'].filter(k => run.lost.has(k));
+    if (lostKeys.length) {
+      this.time.delayedCall(1700, () => {
+        flash(this, 300, 255, 240, 200);
+        lostKeys.forEach((k, i) => {
+          run.lost.delete(k);
+          const x = v.x + (people.length * 7 + 14 + i * 14);
+          this.add.sprite(x, GROUND_Y - 12, k, 0).setScale(ART_SCALE).setOrigin(0.5).setDepth(9);
+          puff(this, x, GROUND_Y - 10, 0xffe14a);
+          popText(this, x, GROUND_Y - 30, t('pop.saved'), '#ffe14a');
+        });
+        const lot = people.find(q => q.texture.key === 'lot');
+        if (lot) {
+          lot.setFlipX(true);
+          speech(this, v.x + lot.x, GROUND_Y - 30, 1800, t('say.alive'));
+        }
+      });
+    }
+    this.time.delayedCall(lostKeys.length ? 4000 : 2150, () => {
       fadeOut(this, 500, () => this.scene.start('WildernessScene'));
     });
   }

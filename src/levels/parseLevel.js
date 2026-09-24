@@ -1,6 +1,6 @@
 export const ROWS = 23;
 export const TILE_CHARS = { '#': 0, B: 1, T: 2, P: 3, '=': 4, W: 5, b: 6, w: 7 };
-export const ENTITY_CHARS = new Set(['L', 'E', 'V', 'H', 'C', 'G']);
+export const ENTITY_CHARS = new Set(['L', 'E', 'V', 'H', 'C', 'G', 'A']);
 export const SOLID = [0, 1, 2, 3, 5];
 export const ONE_WAY = 4;
 
@@ -31,7 +31,7 @@ export function parseLevel(sections) {
         data[r][c] = TILE_CHARS[ch];
       } else if (ENTITY_CHARS.has(ch)) {
         data[r][c] = -1;
-        const type = { L: 'lot', E: 'sodomite', V: 'vent', H: 'halo', C: 'checkpoint', G: 'gate' }[ch];
+        const type = { L: 'lot', E: 'sodomite', V: 'vent', H: 'halo', C: 'checkpoint', G: 'gate', A: 'intro' }[ch];
         entities.push({ type, col: c, row: r });
         if (type === 'lot') lotCount++;
         if (type === 'gate') gateCount++;
