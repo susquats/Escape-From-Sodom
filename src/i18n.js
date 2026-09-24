@@ -6,7 +6,7 @@ const STR = {
     rotate: 'Turn your phone sideways',
     'title.logoTop': 'ESCAPE FROM', 'title.logo': 'SODOM',
     'title.press': 'PRESS SPACE TO PLAY', 'title.tap': 'TAP TO PLAY',
-    'btn.jump': 'JUMP',
+    'btn.jump': 'JUMP', 'btn.paused': 'PAUSED', 'btn.resume': 'Tap to resume',
 
     'act1': 'ACT I\nSODOM', 'act2': 'ACT II\nTHE ANGELS', 'act3': 'ACT III\nTHE MOUNTAIN',
     'hint.sodomKeys': '← → move   SPACE jump   R restart', 'hint.sodomTouch': 'Buttons to move & jump',
@@ -47,7 +47,7 @@ const STR = {
     rotate: 'Gira tu teléfono horizontalmente',
     'title.logoTop': 'ESCAPA DE', 'title.logo': 'SODOMA',
     'title.press': 'PRESIONA ESPACIO PARA JUGAR', 'title.tap': 'TOCA PARA JUGAR',
-    'btn.jump': 'SALTAR',
+    'btn.jump': 'SALTAR', 'btn.paused': 'PAUSA', 'btn.resume': 'Toca para continuar',
 
     'act1': 'ACTO I\nSODOMA', 'act2': 'ACTO II\nLOS ÁNGELES', 'act3': 'ACTO III\nLA MONTAÑA',
     'hint.sodomKeys': '← → mover   ESPACIO saltar   R reiniciar', 'hint.sodomTouch': 'Botones para moverte y saltar',

@@ -43,30 +43,67 @@ canvas {
 
 /* On-screen controls: pinned to the screen edges, i.e. inside the letterbox bars on wide phones. */
 #touch-controls { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
-.tc-btn {
+/* Mesopotamian tablet look: gold-rimmed lapis lazuli slabs with stepped (ziggurat) corners */
+.tc-hit {
+  --pad: 18px; /* invisible touch target around the visible tablet */
   position: absolute;
   pointer-events: auto;
   touch-action: none;
+  padding: var(--pad);
+  margin: calc(-1 * var(--pad));
+}
+.tc-btn {
+  --s: 6px;
+  position: relative;
+  isolation: isolate;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   width: 72px;
   height: 72px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.28);
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  color: rgba(0, 0, 0, 0.75);
-  font: bold 22px monospace;
+  color: #fff;
+  font: bold 11px monospace;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 0 #1a0d2e, 1px 0 0 #1a0d2e, -1px 0 0 #1a0d2e, 0 -1px 0 #1a0d2e;
+  opacity: 0.88;
+  background: linear-gradient(#f6d873, #b07a1c);
+  clip-path: polygon(0 calc(2*var(--s)), var(--s) calc(2*var(--s)), var(--s) var(--s), calc(2*var(--s)) var(--s), calc(2*var(--s)) 0,
+    calc(100% - 2*var(--s)) 0, calc(100% - 2*var(--s)) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(2*var(--s)), 100% calc(2*var(--s)),
+    100% calc(100% - 2*var(--s)), calc(100% - var(--s)) calc(100% - 2*var(--s)), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - 2*var(--s)) calc(100% - var(--s)), calc(100% - 2*var(--s)) 100%,
+    calc(2*var(--s)) 100%, calc(2*var(--s)) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - 2*var(--s)), 0 calc(100% - 2*var(--s)));
 }
-.tc-btn.down { background: rgba(255, 255, 255, 0.6); }
+.tc-btn svg { display: block; filter: drop-shadow(0 1px 0 rgba(0,0,0,.5)); }
+/* lapis face, with faint glazed-brick lines and a thin inner gold line */
+.tc-btn::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  z-index: -1;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 11px, rgba(255, 255, 255, 0.07) 11px 12px),
+    linear-gradient(#3a5fc4, #1b2f72);
+  box-shadow: inset 0 0 0 2px rgba(224, 176, 64, 0.55);
+  clip-path: polygon(0 calc(2*var(--s)), var(--s) calc(2*var(--s)), var(--s) var(--s), calc(2*var(--s)) var(--s), calc(2*var(--s)) 0,
+    calc(100% - 2*var(--s)) 0, calc(100% - 2*var(--s)) var(--s), calc(100% - var(--s)) var(--s), calc(100% - var(--s)) calc(2*var(--s)), 100% calc(2*var(--s)),
+    100% calc(100% - 2*var(--s)), calc(100% - var(--s)) calc(100% - 2*var(--s)), calc(100% - var(--s)) calc(100% - var(--s)), calc(100% - 2*var(--s)) calc(100% - var(--s)), calc(100% - 2*var(--s)) 100%,
+    calc(2*var(--s)) 100%, calc(2*var(--s)) calc(100% - var(--s)), var(--s) calc(100% - var(--s)), var(--s) calc(100% - 2*var(--s)), 0 calc(100% - 2*var(--s)));
+}
+.tc-hit.down .tc-btn { opacity: 1; filter: brightness(1.25); }
 .tc-left { left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); }
-.tc-right { left: calc(max(12px, env(safe-area-inset-left)) + 84px); bottom: max(12px, env(safe-area-inset-bottom)); }
-.tc-jump {
-  right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom));
-  width: 88px; height: 88px; border-radius: 50%; font-size: 16px;
+.tc-right { left: calc(max(12px, env(safe-area-inset-left)) + 72px + 44px); bottom: max(12px, env(safe-area-inset-bottom)); }
+.tc-jump { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); --pad: 26px; }
+.tc-jump .tc-btn { --s: 8px; width: 92px; height: 92px; gap: 2px; }
+.tc-pause { right: max(8px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); --pad: 12px; }
+.tc-pause .tc-btn { --s: 4px; width: 40px; height: 40px; }
+.tc-pause svg { width: 20px; height: 20px; }
+.tc-jump svg { width: 34px; height: 34px; }
+
+#pause-overlay {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: rgba(0, 0, 0, 0.65); color: #fff; font-family: monospace; text-align: center;
 }
-.tc-restart {
-  right: max(8px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top));
-  width: 40px; height: 40px; border-radius: 10px; font-size: 16px;
-}
+#pause-overlay div { font-size: 32px; font-weight: bold; }
+#pause-overlay small { font-size: 14px; opacity: 0.7; }

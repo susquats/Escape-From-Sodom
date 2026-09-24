@@ -55,8 +55,9 @@ export default class MountainFollowers {
   sacrifice(key) {
     const m = this.members.find(k => k.key === key);
     if (!m) return;
-    m.sprite.lostAt = true;
-    m.sprite.setTint(0xff2020);
-    this.scene.tweens.add({ targets: m.sprite, y: m.sprite.y - 30, alpha: 0, duration: 700, onComplete: () => m.sprite.destroy() });
+    const sprite = m.sprite; // not m.sprite later: a quick rescue swaps in a new sprite that must not be destroyed
+    sprite.lostAt = true;
+    sprite.setTint(0xff2020);
+    this.scene.tweens.add({ targets: sprite, y: sprite.y - 30, alpha: 0, duration: 700, onComplete: () => sprite.destroy() });
   }
 }

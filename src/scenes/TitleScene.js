@@ -59,7 +59,7 @@ export default class TitleScene extends Phaser.Scene {
     const touch = this.sys.game.device.input.touch;
     const promptId = touch ? 'title.tap' : 'title.press';
     const promptKey = textTexture(this, `${promptId}-${getLang()}`, [[t(promptId), '#ffffff']]);
-    const prompt = img(GAME_WIDTH / 2, IS_LOCAL ? 146 : 156, promptKey, 10);
+    const prompt = img(GAME_WIDTH / 2, IS_LOCAL ? 140 : 152, promptKey, 10);
     this.tweens.add({ targets: prompt, alpha: 0.2, duration: 560, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     // Input: 300 ms grace period to prevent carry-over taps from credits
@@ -77,14 +77,21 @@ export default class TitleScene extends Phaser.Scene {
     fadeIn(this, 400);
   }
 
-  // Top-right: English / Español. Click or tap one, or press L to switch. The scene restarts to redraw in the new language.
+  // Below the prompt: English / Español. Click or tap one, or press L to switch. The scene restarts to redraw in the new language.
   addLanguageToggle() {
     const names = { en: 'English', es: 'Español' };
+    const y = IS_LOCAL ? 153 : 165;
     const style = (on) => ({ fontFamily: 'monospace', fontSize: '8px', color: on ? '#ffe14a' : '#9aaee0', stroke: '#1a0610', strokeThickness: 2 });
-    LANGS.forEach((l, i) => {
-      const txt = this.add.text(GAME_WIDTH - 5, 5 + i * 11, names[l], style(l === getLang())).setOrigin(1, 0).setDepth(10)
-        .setInteractive({ useHandCursor: true });
-      txt.on('pointerdown', (p, lx, ly, ev) => { ev.stopPropagation(); this.switchLang(l); });
+    const items = LANGS.map(l => this.add.text(0, y, names[l], style(l === getLang())).setOrigin(0, 0.5).setDepth(10));
+    const gap = 16, total = items.reduce((a, o) => a + o.width, 0) + gap * (items.length - 1);
+    let x = (GAME_WIDTH - total) / 2;
+    items.forEach((txt, i) => {
+      txt.setX(x);
+      x += txt.width + gap;
+      // generous hit area so it is easy to tap
+      txt.setInteractive(new Phaser.Geom.Rectangle(-8, -8, txt.width + 16, txt.height + 16), Phaser.Geom.Rectangle.Contains)
+        .input.cursor = 'pointer';
+      txt.on('pointerdown', (p, lx, ly, ev) => { ev.stopPropagation(); this.switchLang(LANGS[i]); });
     });
     this.input.keyboard.on('keydown-L', () => this.switchLang(LANGS[(LANGS.indexOf(getLang()) + 1) % LANGS.length]));
   }
@@ -102,7 +109,7 @@ export default class TitleScene extends Phaser.Scene {
     const gap = 8, total = widths.reduce((a, b) => a + b, 0) + gap * (labels.length - 1);
     let x = (GAME_WIDTH - total) / 2;
     LEVELS.forEach(([, key], i) => {
-      const t = this.add.image(x, 164, labels[i]).setOrigin(0, 0.5).setScale(ART_SCALE).setDepth(10).setAlpha(0.8)
+      const t = this.add.image(x, 168, labels[i]).setOrigin(0, 0.5).setScale(ART_SCALE).setDepth(10).setAlpha(0.8)
         .setInteractive({ useHandCursor: true });
       x += widths[i] + gap;
       t.on('pointerover', () => t.setAlpha(1));
