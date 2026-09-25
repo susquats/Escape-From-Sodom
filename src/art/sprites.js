@@ -58,3 +58,9 @@ export function fitBody(sprite, key) {
   const { h, cx, body: [bw, bh] } = SPRITES[key];
   sprite.body.setSize(bw, bh, false).setOffset(cx - bw / 2, h - bh);
 }
+
+// Standing still: the character's blink idle if it has one, otherwise its first frame.
+export function standIdle(sprite, key) {
+  if (sprite.scene.anims.exists(`${key}-idle`)) sprite.play(`${key}-idle`, true);
+  else { sprite.anims.stop(); sprite.setFrame(0); }
+}

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { START_SCENE, START_LOST } from '../config.js';
 import { run } from '../runState.js';
 import { buildTextures } from '../art/buildTextures.js';
+import { preloadPngSprites } from '../art/pngSprites.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -10,6 +11,13 @@ export default class BootScene extends Phaser.Scene {
 
   preload() {
     ['explosion', 'hitHurt', 'jump', 'powerUp', 'hitHurt2', 'powerUp2'].forEach(k => this.load.audio(k, `audio/${k}.wav`));
+    ['squish', 'bonk', 'toc', 'pffft', 'thud', 'pum', 'ahhh'].forEach(k => this.load.audio(k, `audio/${k}.wav`));
+    ['snoring', 'pickupCoin', 'rumble', 'sodomite', 'comet', 'firevent'].forEach(k => this.load.audio(k, `audio/${k}.wav`));
+    this.load.audio('ending-comet', 'audio/ending-comet.mp3');
+    this.load.audio('ashes-of-ur', 'audio/ashes-of-ur.mp3');
+    this.load.audio('mesopotamian-ruins', 'audio/mesopotamian-ruins.mp3');
+    this.load.audio('newer-ashes-of-ur', 'audio/newer-ashes-of-ur.mp3');
+    preloadPngSprites(this);
   }
 
   create() {

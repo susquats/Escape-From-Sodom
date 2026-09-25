@@ -13,7 +13,7 @@ import Checkpoint from '../objects/Checkpoint.js';
 import AngelBoost from '../objects/AngelBoost.js';
 import FamilyHud from '../ui/FamilyHud.js';
 import { run, resetRun, saveCheckpoint } from '../runState.js';
-import { popText, saltLife, letterbox, speech, puff, sfx } from '../fx.js';
+import { popText, saltLife, letterbox, speech, puff, sfx, rumble, playMusic } from '../fx.js';
 import { SODOM_SECTIONS } from '../levels/sodom.js';
 import { parseLevel, ROWS, SOLID, ONE_WAY, TILE_CHARS } from '../levels/parseLevel.js';
 import { hash } from '../art/pix.js';
@@ -42,6 +42,7 @@ export default class SodomScene extends Phaser.Scene {
 
   create() {
     setupView(this);
+    playMusic(this, 'mesopotamian-ruins');
     this.physics.world.gravity.y = MOVE.gravity;
     this.cutscene = false;
     this.lifting = false;
@@ -103,6 +104,11 @@ export default class SodomScene extends Phaser.Scene {
         case 'gate': gate = e; break;
       }
     });
+
+    // calm opening: a banner a few tiles before Lot's door that brings back the whole family once crossed, so
+    // they are all there when the mob arrives. It does not save a checkpoint (retries still start at the opening).
+    this.familyBanner = null;
+    if (this.calm) this.familyBanner = new Checkpoint(this, this.introX - 14 * TILE, feetY(INTRO));
 
     this.destruction = new Destruction(this, WORLD_H);
     if (cpX !== null) {
@@ -233,6 +239,7 @@ export default class SodomScene extends Phaser.Scene {
     const facing = (dir) => this.family.members.forEach(m => { m.faceOverride = dir; if (dir) m.setFlipX(dir < 0); });
     // the mob arrives: from the right first, then from behind; the ground rumbles under the crowd
     addMob(12, 1);
+    rumble(this, 2900, 0.5);
     shake(this, 2900, 0.0006); // a faint rumble; ends before the strike: a running shake would swallow the next one
     await wait(500);
     popText(this, lot.x, lot.y - 24, '!');
@@ -253,6 +260,7 @@ export default class SodomScene extends Phaser.Scene {
     await wait(650);
     // ... and strike the mob (Genesis 19:11): a blinding flash and a quake, and they are gone
     flash(this, 700, 255, 255, 235);
+    rumble(this, 1200, 0.7);
     shake(this, 700, 0.02);
     scatter();
     await wait(1000);
@@ -284,6 +292,7 @@ export default class SodomScene extends Phaser.Scene {
     if (!this.calm) return;
     this.calm = false;
     flash(this, 600, 255, 150, 50);
+    rumble(this, 0, 0.35, true);
     shake(this, 900, 0.012);
     this.calmArt.forEach(o => this.tweens.add({ targets: o, alpha: 0, duration: 1600, ease: 'Sine.in', onComplete: () => o.destroy() }));
     this.fireDecor.forEach(o => this.tweens.add({ targets: o, alpha: 1, delay: 300, duration: 1200 }));
@@ -400,7 +409,7 @@ export default class SodomScene extends Phaser.Scene {
     const lostOnes = family.members.filter(m => m.state === 'lost');
     if (lostOnes.length) {
       flash(this, 300, 255, 240, 200);
-      lostOnes.forEach(m => m.restore());
+      lostOnes.forEach(m => m.restore(true));
       await wait(150);
       if (lostOnes.length) sfx(this, 'powerUp2');
       lostOnes.forEach(m => { puff(this, m.x, m.y - 8, 0xffe14a); popText(this, m.x, m.y - 24, t('pop.saved'), '#ffe14a'); });
@@ -425,7 +434,7 @@ export default class SodomScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.stopFollow();
     this.lot.body.enable = false;
-    [this.lot, ...members].forEach((m, i) => m.play({ key: `${m === this.lot ? 'lot' : m.memberName}-hang`, startFrame: i % 2 }));
+    [this.lot, ...members].forEach((m, i) => m.play(`${m === this.lot ? 'lot' : m.memberName}-hang`));
     const targets = [this.lot, ...angels, ...members];
     targets.forEach((t, i) => {
       this.tweens.add({ targets: t, y: '-=220', x: '+=40', duration: 1400, ease: 'Sine.in',
@@ -625,6 +634,12 @@ export default class SodomScene extends Phaser.Scene {
     this.hud.update();
     if (this.lot.onGround && this.lot.body.left > this.destruction.x + 40) this.lastSafe = { x: this.lot.x, y: this.lot.y };
 
+    const fb = this.familyBanner;
+    if (fb && !fb.active && this.lot.x > fb.x) {
+      fb.activate(this);
+      this.family.rescueAll();
+      this.family.members.forEach(m => m.restore());
+    }
     for (const cp of this.checkpoints) {
       if (!cp.active && this.lot.x > cp.x) { cp.activate(this); saveCheckpoint(cp.x); }
     }

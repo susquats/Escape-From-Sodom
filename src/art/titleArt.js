@@ -186,7 +186,7 @@ function city() {
       const r = (k) => hash(i, k, seed);
       const w = 14 + Math.floor(r(1) * 22), h = minH + Math.floor(r(2) * varH);
       if (!skip(x + w / 2)) walls.push(...house(put, x, GROUND + 2, w, h, i + seed * 100, { upper: 0.5, shelter: 0.25 }));
-      x += w + Math.floor(r(3) * 3) - 1;
+      x += w - Math.floor(r(3) * 2); // butt up or overlap by 1px: a slit would show sky down to the ground
       i++;
     }
   };
@@ -198,6 +198,8 @@ function city() {
     // the tell under the houses nearest the temple
     for (let x = 0; x < W; x++) for (let y = GROUND - 30 - hill(x); y < GROUND; y++) if (hill(x) > 2) put(x, y);
     ziggurat(put, 470, GROUND - 20, 150, 20, 5);
+    // the terrace rests on a solid platform down to the ground, not on whatever houses happen to be under it
+    for (let x = 90; x < 150; x++) for (let y = GROUND - 40; y < GROUND; y++) put(x, y);
     ziggurat(put, 120, GROUND - 40, 60, 14, 2);
     for (const [x, s] of [[40, 1.2], [260, 1.4], [600, 1.1]]) palm(put, x, GROUND - 20, s, x);
     return walls;

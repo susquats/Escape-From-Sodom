@@ -15,18 +15,18 @@ export default class Carrier {
 
     this.view = scene.add.container(x, y).setDepth(10);
     this.angels = [
-      scene.add.sprite(-7, -18, 'angel').setScale(ART_SCALE).setOrigin(0.5).play('angel-flap'),
-      scene.add.sprite(7, -18, 'angel').setScale(ART_SCALE).setOrigin(0.5).setFlipX(true).play({ key: 'angel-flap', startFrame: 1 }),
+      // both flying right (horizontal fliers), one a step behind and above the other, flapping out of step
+      scene.add.sprite(-9, -21, 'angel').setScale(ART_SCALE).setOrigin(0.5).play('angel-flap'),
+      scene.add.sprite(8, -17, 'angel').setScale(ART_SCALE).setOrigin(0.5).play({ key: 'angel-flap', startFrame: 2 }),
     ];
     this.view.add(this.angels);
     // the whole family hangs by their hands from the angels' feet in one overlapping row
-    const hanger = (x, key, startFrame) =>
-      scene.add.sprite(x, -9, key).setScale(ART_SCALE).setOrigin(0.5, 0).play({ key: `${key}-hang`, startFrame });
+    const hanger = (x, key) => scene.add.sprite(x, -9, key).setScale(ART_SCALE).setOrigin(0.5, 0).play(`${key}-hang`);
     this.danglers = [];
     // flying right: Lot in front, the daughters, the mother at the back
-    [['wife', -12, 1], ['daughter2', -4, 0], ['daughter1', 4, 1], ['lot', 12, 0]].forEach(([key, px, f]) => {
+    [['wife', -12], ['daughter2', -4], ['daughter1', 4], ['lot', 12]].forEach(([key, px]) => {
       if (run.lost.has(key)) return;
-      const d = hanger(px, key, f);
+      const d = hanger(px, key);
       this.view.add(d);
       if (key !== 'lot') this.danglers.push(d);
     });

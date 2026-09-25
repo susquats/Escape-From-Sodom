@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import FamilyMember from './FamilyMember.js';
 import { WIFE } from '../config.js';
 import { WIFE_LOOK_FRAME } from '../art/characters.js';
+import { hiResFrame } from '../art/pngSprites.js';
 import { run } from '../runState.js';
 import { hash } from '../art/pix.js';
 
@@ -132,18 +133,22 @@ function saltPillar(scene) {
   const key = 'wife-salt';
   if (scene.textures.exists(key)) return key;
   const f = scene.textures.getFrame('wife', WIFE_LOOK_FRAME);
-  const tex = scene.textures.createCanvas(key, f.cutWidth, f.cutHeight);
+  const hires = f.customData.hires; // PNG sprite frame: its real pixel area (see pngSprites.js)
+  const { x: fx, y: fy, w, h } = hires ?? { x: f.cutX, y: f.cutY, w: f.cutWidth, h: f.cutHeight };
+  const tex = scene.textures.createCanvas(key, w, h);
   const ctx = tex.getContext();
-  ctx.drawImage(f.source.image, f.cutX, f.cutY, f.cutWidth, f.cutHeight, 0, 0, f.cutWidth, f.cutHeight);
-  const img = ctx.getImageData(0, 0, f.cutWidth, f.cutHeight), d = img.data;
+  ctx.drawImage(f.source.image, fx, fy, w, h, 0, 0, w, h);
+  const img = ctx.getImageData(0, 0, w, h), d = img.data;
+  const px = hires ? hires.res : 1; // keep the salt speckles the size of a generated-art pixel
   for (let i = 0; i < d.length; i += 4) {
     if (!d[i + 3]) continue;
-    const x = (i / 4) % f.cutWidth, y = Math.floor(i / 4 / f.cutWidth);
+    const x = Math.floor((i / 4) % w / px), y = Math.floor(i / 4 / w / px);
     const lum = (d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11) / 255;
     const c = SALT[Math.max(0, Math.min(3, Math.floor(lum * 3.2 + 0.9 + (hash(x, y, 91) - 0.5) * 0.6)))];
     d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
   tex.refresh();
+  if (hires) hiResFrame(tex.get(), hires.res);
   return key;
 }

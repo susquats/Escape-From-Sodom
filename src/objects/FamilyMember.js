@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { FAMILY, GAME_HEIGHT } from '../config.js';
-import { popText, puff, sfx } from '../fx.js';
+import { popText, puff, sfx, voice } from '../fx.js';
 import { run } from '../runState.js';
 import { shake, viewY, ART_SCALE } from '../view.js';
-import { fitBody } from '../art/sprites.js';
+import { fitBody, standIdle } from '../art/sprites.js';
 import { AIR_FRAMES } from '../art/characters.js';
 import { t } from '../i18n.js';
 
@@ -66,7 +66,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     const air = AIR_FRAMES[this.memberName];
     if (this.airborne && air) { this.anims.stop(); this.setFrame(this.rising ? air.jump : air.fall); }
     else if (this.stillMs < 120) this.play(`${this.memberName}-walk`, true);
-    else { this.anims.stop(); this.setFrame(0); }
+    else standIdle(this, this.memberName);
   }
 
   // Trail sample for this member. The trail only grows while Lot moves, so if he stops
@@ -132,6 +132,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     this.salt = this.saltGroup.create(this.x, this.y - 6, 'salt').setScale(ART_SCALE);
     this.salt.member = this;
     this.salt.setVelocity(0, -60); // tiny hop
+    voice(this.scene, 'pffft');
     popText(this.scene, this.x, this.y - 20, t('pop.pfft'));
     puff(this.scene, this.x, this.y - 8);
     shake(this.scene, 80, 0.004);
@@ -162,7 +163,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
   }
 
   // brought back by the angels (end of Act I): stands with the family again
-  restore() {
+  restore(instant = false) {
     if (this.state !== 'lost') return;
     run.lost.delete(this.memberName);
     this.state = 'following';
@@ -172,9 +173,18 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
     const p = this.trail.sample(this.spacing);
     this.setPosition(p.x, p.y);
     this.clearTint();
-    this.setVisible(true).setAlpha(0);
+    this.setVisible(true).setAlpha(instant ? 1 : 0);
     this.body.enable = true;
-    this.scene.tweens.add({ targets: this, alpha: 1, duration: 500 });
+    if (!instant) this.scene.tweens.add({ targets: this, alpha: 1, duration: 500 });
+  }
+
+  // checkpoint: appears at once in the family's spot, whether lost or turned to salt (no run-in)
+  respawn() {
+    if (this.state === 'following' || this.state === 'lookingBack') return;
+    if (this.salt) { this.salt.destroy(); this.salt = null; }
+    this.state = 'lost';
+    this.restore(true);
+    puff(this.scene, this.x, this.y - 8, 0xffe14a);
   }
 
   lose() {

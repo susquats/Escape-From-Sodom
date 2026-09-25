@@ -4,7 +4,7 @@ import Carrier from '../objects/Carrier.js';
 import { COMET_HEAD } from '../art/items.js';
 import RunHud from '../ui/RunHud.js';
 import Controls from '../input/Controls.js';
-import { popText, puff, sfx, loseLife, speech, letterbox } from '../fx.js';
+import { popText, puff, sfx, voice, loseLife, speech, letterbox, playMusic } from '../fx.js';
 import { run } from '../runState.js';
 import { setupView, fadeIn, shake, flash, ART_SCALE } from '../view.js';
 import { buildingTexture } from '../art/flightBuildings.js';
@@ -60,6 +60,7 @@ export default class FlightScene extends Phaser.Scene {
 
   create() {
     setupView(this);
+    playMusic(this, 'ashes-of-ur');
     this.physics.world.gravity.y = FLIGHT.gravity;
     this.started = false;
     this.elapsed = 0;
@@ -199,6 +200,11 @@ export default class FlightScene extends Phaser.Scene {
     if (!gameOver) {
       // a family member is lost in Lot's place; the flight goes on
       this.carrier.sacrifice(name);
+      // if we hit the ground, pop back up into the sky so we don't stay stuck below it
+      if (this.carrier.body.bottom > GAME_HEIGHT - 8) {
+        this.carrier.zone.y -= this.carrier.body.bottom - (GAME_HEIGHT - 60);
+        this.carrier.flap();
+      }
       this.graceUntil = this.time.now + 1500;
       this.tweens.add({ targets: this.carrier.view, alpha: 0.3, duration: 80, yoyo: true, repeat: 8,
         onComplete: () => this.carrier.view.setAlpha(1) });
@@ -207,7 +213,7 @@ export default class FlightScene extends Phaser.Scene {
     this.dead = true;
     this.physics.pause();
     this.carrier.crash();
-    this.time.delayedCall(900, () => this.scene.start('TitleScene'));
+    this.time.delayedCall(900, () => this.scene.restart());
   }
 
   scrollBackground(delta) {
@@ -298,6 +304,7 @@ export default class FlightScene extends Phaser.Scene {
             } });
           if (i !== 0) return;
           shake(this, 150, 0.008);
+          voice(this, 'thud');
           popText(this, 160, 140, t('pop.thud'));
           people.forEach(q => puff(this, v.x + q.x, GROUND_Y - 2, 0xd9b774));
         } });

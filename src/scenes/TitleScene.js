@@ -5,6 +5,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import Controls from '../input/Controls.js';
 import { t, getLang, setLang, LANGS } from '../i18n.js';
 import { resetRun } from '../runState.js';
+import { playMusic } from '../fx.js';
 import { setupView, fadeIn, fadeOut, ART_SCALE } from '../view.js';
 
 const LEVELS = [
@@ -20,6 +21,7 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    playMusic(this, 'mesopotamian-ruins');
     setupView(this);
     buildTitleArt(this);
     this.starting = false;
@@ -66,7 +68,7 @@ export default class TitleScene extends Phaser.Scene {
     this.ready = false;
     this.time.delayedCall(300, () => { this.ready = true; });
 
-    this.controls = new Controls(this, { touchButtons: [] });
+    this.controls = new Controls(this, { touchButtons: ['pause'] });
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
 
     this.input.on('pointerdown', (p, over) => { if (this.ready && !over.length) this.startGame(); });

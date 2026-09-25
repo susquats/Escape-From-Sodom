@@ -1,6 +1,6 @@
 import { ANGEL, FAMILY } from '../config.js';
 import { LOT_FRAMES } from '../art/characters.js';
-import { popText } from '../fx.js';
+import { popText, setMusicRate } from '../fx.js';
 import { flash, viewX, viewY, ART_SCALE } from '../view.js';
 import { t } from '../i18n.js';
 
@@ -21,6 +21,8 @@ export default class AngelBoost {
     const { scene, lot } = this;
     this.timer = ANGEL.durationMs;
     lot.setBoost(true);
+    setMusicRate(1.25);
+    scene.events.once('shutdown', () => setMusicRate(1, 0));
     this.family.rescueAll();
     this.family.protect(ANGEL.durationMs);
     this.attached = false;
@@ -79,6 +81,7 @@ export default class AngelBoost {
 
   end() {
     this.lot.setBoost(false);
+    setMusicRate(1, 600);
     // the family lands right where the angels leave them, so stay invulnerable a little longer
     this.family.protect(ANGEL.graceMs);
     this.scene.grace(ANGEL.graceMs);

@@ -1,7 +1,7 @@
 export const GAME_WIDTH = 320;
 export const GAME_HEIGHT = 180;
 export const TILE = 16;
-export const ZOOM = 2; // canvas pixels per world unit (see src/view.js)
+export const ZOOM = 4; // canvas pixels per world unit (see src/view.js)
 
 // All movement tuning lives here (internal pixels, px/s).
 export const MOVE = {

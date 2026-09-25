@@ -6,9 +6,9 @@ const STR = {
     rotate: 'Turn your phone sideways',
     'title.logoTop': 'ESCAPE FROM', 'title.logo': 'SODOM',
     'title.press': 'PRESS SPACE TO PLAY', 'title.tap': 'TAP TO PLAY',
-    'btn.jump': 'JUMP', 'btn.paused': 'PAUSED', 'btn.resume': 'Tap to resume',
+    'btn.jump': 'JUMP', 'btn.paused': 'SETTINGS', 'btn.resume': 'Tap to resume', 'btn.resumeMenu': 'RESUME', 'btn.endGame': 'END GAME', 'vol.music': 'MUSIC', 'vol.sfx': 'SOUND EFFECTS',
 
-    'act1': 'ACT I\nSODOM', 'act2': 'ACT II\nTHE ANGELS', 'act3': 'ACT III\nTHE MOUNTAIN',
+    'act1': 'ACT I\nSODOM', 'act2': "ACT II\nANGELS' FLIGHT", 'act3': 'ACT III\nTHE MOUNTAIN',
     'hint.sodomKeys': '← → move   SPACE jump   R restart', 'hint.sodomTouch': 'Buttons to move & jump',
     'hint.sodomGoal': 'Stomp Sodomites. Touch salt to rescue!',
     'hint.flap': 'TAP or SPACE to flap',
@@ -45,16 +45,16 @@ const STR = {
     rotate: 'Gira tu teléfono horizontalmente',
     'title.logoTop': 'ESCAPA DE', 'title.logo': 'SODOMA',
     'title.press': 'PRESIONA ESPACIO PARA JUGAR', 'title.tap': 'TOCA PARA JUGAR',
-    'btn.jump': 'SALTAR', 'btn.paused': 'PAUSA', 'btn.resume': 'Toca para continuar',
+    'btn.jump': 'SALTAR', 'btn.paused': 'AJUSTES', 'btn.resume': 'Toca para continuar', 'btn.resumeMenu': 'CONTINUAR', 'btn.endGame': 'TERMINAR JUEGO', 'vol.music': 'MÚSICA', 'vol.sfx': 'EFECTOS DE SONIDO',
 
-    'act1': 'ACTO I\nSODOMA', 'act2': 'ACTO II\nLOS ÁNGELES', 'act3': 'ACTO III\nLA MONTAÑA',
+    'act1': 'ACTO I\nSODOMA', 'act2': 'ACTO II\nEL VUELO DE LOS ÁNGELES', 'act3': 'ACTO III\nLA MONTAÑA',
     'hint.sodomKeys': '← → mover   ESPACIO saltar   R reiniciar', 'hint.sodomTouch': 'Botones para moverte y saltar',
     'hint.sodomGoal': '¡Pisa a los sodomitas! ¡Toca la sal para rescatar!',
     'hint.flap': 'TOCA o ESPACIO para aletear',
     'hint.steerKeys': '← → guiar', 'hint.steerTouch': 'Botones para guiar',
 
     'name.wife': 'Tu esposa', 'name.daughter1': 'Tu hija 1', 'name.daughter2': 'Tu hija 2',
-    'gone.wife': 'Tu esposa ya no está.', 'gone.daughter1': 'Tu hija ya no está.', 'gone.daughter2': 'Tu otra hija ya no está.',
+    'gone.wife': '¡Tu pobre esposa!', 'gone.daughter1': 'Tu hija favorita murió.', 'gone.daughter2': 'Tu otra hija murió',
     'life.salt': '¡{name} se convierte en sal!\nToca la sal para rescatarla.',
     'life.fell': '¡Muerte!',
     'life.gameOver': 'FIN DEL JUEGO\nLa familia se ha ido. Empezando de nuevo.',
@@ -65,7 +65,7 @@ const STR = {
     'pop.aaah': '¡AAAAH!',
 
     'say.flee': '¡HUYAN!', 'say.dontLook': '¡No miren atrás!', 'say.noWay': 'No hay forma de cruzar...',
-    'say.family': '¡Mi familia está viva!', 'say.alive': '¡Viven! ¡Alabado sea el Señor!', 'say.mother': 'Madre...', 'say.cannotStay': 'No podemos quedarnos.',
+    'say.family': '¡Mi familia está viva!', 'say.alive': '¡Viven! ¡Alabado sea el Señor!', 'say.mother': 'Madre...', 'say.cannotStay': 'Esnif, esnif',
     'say.run': 'Debemos correr a la montaña.', 'say.cheer': '¡Sí! ¡Lo logramos!', 'say.rest': 'Descansemos en aquella cueva.',
     'wife.caption': 'Tu esposa miró atrás y se convirtió en un pilar de sal.',
 

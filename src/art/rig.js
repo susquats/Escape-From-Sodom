@@ -18,6 +18,17 @@ const shade = (nx, ny) => {
 };
 const toneIndex = (b) => { let i = 0; while (i < 4 && b >= THRESHOLDS[i]) i++; return i; };
 
+// Paint a { px } frame (w x h) into a 2D context at (x, 0).
+export function paintFrame(ctx, frame, x, w, h) {
+  const img = ctx.createImageData(w, h);
+  frame.px.forEach((c, i) => {
+    if (!c) return;
+    const n = parseInt(c.slice(1), 16);
+    img.data.set([n >> 16, (n >> 8) & 255, n & 255, 255], i * 4);
+  });
+  ctx.putImageData(img, x, 0);
+}
+
 export class Canvas {
   constructor(w, h) {
     this.w = w; this.h = h;

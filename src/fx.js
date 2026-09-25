@@ -1,14 +1,112 @@
 import { GAME_WIDTH, GAME_HEIGHT } from './config.js';
-import { t } from './i18n.js';
+import { t, getLang } from './i18n.js';
 import { run, spendLife, resetRun, restoreCheckpoint } from './runState.js';
 // Plays one of the loaded sound effects (explosion, hitHurt, jump, powerUp).
 export function sfx(scene, key, volume = 0.5) {
-  scene.sound.play(key, { volume });
+  scene.sound.play(key, { volume: volume * volumes.sfx });
+}
+
+// Voiced onomatopoeia ('squish', 'bonk', 'pffft', 'thud', 'ahhh'): Spanish swaps bonk -> toc and thud -> pum.
+const ES_VOICE = { bonk: 'toc', thud: 'pum' };
+export function voice(scene, name, volume = 0.7) {
+  sfx(scene, (getLang() === 'es' && ES_VOICE[name]) || name, volume);
+}
+
+// A sound that fades with distance (0 = full volume, silent at `range`); returns the sound or null.
+export function sfxNear(scene, key, dist, range, volume = 0.5) {
+  if (dist >= range) return null;
+  const v = volume * (1 - dist / range);
+  scene.sound.play(key, { volume: v * volumes.sfx });
+  return true;
+}
+
+// Rumble for ms milliseconds, fading out over the last 400. loop: keep it going until the scene shuts down.
+export function rumble(scene, ms, volume = 0.5, loop = false) {
+  const snd = scene.sound.add('rumble', { loop, volume: volume * volumes.sfx });
+  snd.play();
+  const stop = () => { if (snd.isPlaying) snd.stop(); snd.destroy(); };
+  if (loop) { scene.events.once('shutdown', stop); return snd; }
+  scene.time.delayedCall(Math.max(0, ms - 400), () => {
+    if (!snd.isPlaying) return;
+    const from = snd.volume, t0 = performance.now();
+    const id = setInterval(() => {
+      const k = Math.min(1, (performance.now() - t0) / 400);
+      if (snd.isPlaying) snd.setVolume(from * (1 - k));
+      if (k === 1) { clearInterval(id); stop(); }
+    }, 30);
+  });
+  return snd;
+}
+
+// Player-set volume multipliers (0..1) for music and sound effects, remembered in localStorage.
+const volumes = { music: 1, sfx: 1 };
+try {
+  const saved = JSON.parse(localStorage.getItem('zoar.volumes') || '{}');
+  for (const k of ['music', 'sfx']) if (typeof saved[k] === 'number') volumes[k] = Math.min(1, Math.max(0, saved[k]));
+} catch { /* storage unavailable: defaults */ }
+export function getVolume(kind) { return volumes[kind]; }
+export function setVolume(kind, v) {
+  volumes[kind] = Math.min(1, Math.max(0, v));
+  try { localStorage.setItem('zoar.volumes', JSON.stringify(volumes)); } catch { /* ignore */ }
+  if (kind === 'music' && currentMusic) {
+    clearInterval(fades.get(currentMusic)); fades.delete(currentMusic);
+    currentMusic.setVolume(currentBase * volumes.music);
+  }
+}
+
+// Background music with crossfades. Music lives on the global sound manager, so it survives scene
+// changes and restarts. Asking for the track that is already current does nothing (it just keeps
+// playing); asking for a different one fades the old out and the new in.
+const MUSIC_FADE = 700;
+const MUSIC_VOL = 0.5;
+let currentMusic = null;
+let currentBase = MUSIC_VOL;
+const fades = new Map();
+function fadeSound(snd, to, ms, done) {
+  clearInterval(fades.get(snd));
+  const from = snd.volume, t0 = performance.now();
+  const id = setInterval(() => {
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    snd.setVolume(from + (to - from) * k);
+    if (k === 1) { clearInterval(id); fades.delete(snd); done?.(); }
+  }, 30);
+  fades.set(snd, id);
+}
+// Speeds the current track up (and raises its pitch with it) or back to normal, easing over ms.
+let rateTimer = null;
+export function setMusicRate(rate, ms = 400) {
+  clearInterval(rateTimer);
+  const snd = currentMusic;
+  if (!snd) return;
+  const from = snd.rate, t0 = performance.now();
+  rateTimer = setInterval(() => {
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    if (snd.isPlaying) snd.setRate(from + (rate - from) * k);
+    if (k === 1) clearInterval(rateTimer);
+  }, 30);
+}
+export function stopMusic(scene) {
+  if (!currentMusic) return;
+  const snd = currentMusic;
+  currentMusic = null;
+  fadeSound(snd, 0, MUSIC_FADE, () => snd.stop());
+}
+export const isMusicPlaying = (key) => !!currentMusic && currentMusic.key === key;
+// nextKey: play the track once, then crossfade into nextKey when it ends.
+export function playMusic(scene, key, volume = MUSIC_VOL, nextKey = null) {
+  if (currentMusic && currentMusic.key === key) return;
+  stopMusic(scene);
+  const snd = scene.sound.add(key, { loop: !nextKey, volume: 0 });
+  if (nextKey) snd.once('complete', () => { if (currentMusic === snd) playMusic(scene, nextKey); });
+  snd.play();
+  currentMusic = snd;
+  currentBase = volume;
+  fadeSound(snd, volume * volumes.music, MUSIC_FADE);
 }
 
 // Call when Lot dies: spends a family life (or ends the run) and announces it. The next member
 // (wife, then daughters) turns red and dies if a family is passed; play continues where it is.
-// Returns { gameOver, name }; on gameOver the caller sends the player back to the title.
+// Returns { gameOver, name }; on gameOver the caller restarts the level (the run state is already reset).
 export function loseLife(scene, family = null) {
   sfx(scene, 'hitHurt');
   const res = spendLife();

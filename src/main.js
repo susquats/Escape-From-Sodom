@@ -14,7 +14,7 @@ import ArtScene from './scenes/ArtScene.js';
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 const game = new Phaser.Game({
-  type: Phaser.AUTO,
+  type: Phaser.WEBGL, // the hi-res PNG sprite frames (art/pngSprites.js) only draw correctly in WebGL
   parent: 'game',
   width: GAME_WIDTH * ZOOM,
   height: GAME_HEIGHT * ZOOM,

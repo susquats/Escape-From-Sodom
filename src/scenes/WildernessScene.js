@@ -7,7 +7,7 @@ import Trail from '../objects/Trail.js';
 import Family from '../objects/Family.js';
 import FamilyHud from '../ui/FamilyHud.js';
 import { setupView, fadeIn, fadeOut, setViewX, shake, viewX, viewY, ART_SCALE } from '../view.js';
-import { puff, speech } from '../fx.js';
+import { puff, speech, sfx, playMusic } from '../fx.js';
 import { pixTexture } from '../art/pix.js';
 import { comet, COMET_HEAD } from '../art/comet.js';
 import { t } from '../i18n.js';
@@ -19,6 +19,7 @@ export default class WildernessScene extends Phaser.Scene {
 
   // data.fromFlight: the flight's landing hands over without a cut (same backdrop, same spots, letterbox still up)
   create(data) {
+    playMusic(this, 'ashes-of-ur');
     setupView(this);
     this.physics.world.gravity.y = MOVE.gravity;
     this.exiting = false;
@@ -134,6 +135,7 @@ export default class WildernessScene extends Phaser.Scene {
       this.tweens.add({ targets: p, x: p.x + Phaser.Math.Between(-6, 6), y: p.y + Phaser.Math.Between(-4, 8), alpha: 0,
         duration: 350, onComplete: () => p.destroy() });
     } });
+    sfx(this, 'comet', 0.5);
     shake(this, 900, 0.002);
     await tween({ targets: c, x: head.x, y: head.y, duration: 900, ease: 'Quad.in' });
     sparks.remove();

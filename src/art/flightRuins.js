@@ -3,6 +3,7 @@
 // of fire behind them, and a black band of rubble in front. The bands wrap horizontally for parallax.
 import { Pix, hash, noise1, dith } from './pix.js';
 import { ENV } from './palette.js';
+import { palm } from './ancientCity.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const K = ENV.sand[0];
@@ -139,8 +140,11 @@ function colonnade(set, x0, top, w, h, seed) {
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Rubble in front: black mounds of broken blocks and a fallen column drum or two, a thin warm rim on top.
-export const RUBBLE_W = 640, RUBBLE_H = 48;
+// Rubble in front: black mounds of broken blocks and a fallen column drum or two, a thin warm rim on top,
+// and a couple of tall date palms rising out of it in silhouette. The mounds fill the bottom MOUND_H px; the
+// rest of the band is headroom for the palms.
+const MOUND_H = 48;
+export const RUBBLE_W = 640, RUBBLE_H = 170;
 
 export function rubbleBand() {
   const W = RUBBLE_W, H = RUBBLE_H, p = new Pix(W, H);
@@ -162,10 +166,19 @@ export function rubbleBand() {
     const cx = Math.floor((i + 0.3) * W / 3), r = 7 + i * 2, base = H - 10;
     for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r) put(cx + x, base - r + y);
   }
+  // palms, leaning every which way, their bases buried in the heap; firelight catches the tops of the fronds
+  const palms = new Uint8Array(W * H);
+  const putPalm = (x, y) => { x = ((x % W) + W) % W; if (y >= 0 && y < H) palms[y * W + x] = 1; };
+  for (const [px, s] of [[150, 2.9], [470, 2.4], [505, 1.7]]) palm(putPalm, px, H - 12, s, px + 5);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!palms[y * W + x]) continue;
+    const up = y > 0 && palms[(y - 1) * W + x], left = palms[y * W + ((x + W - 1) % W)];
+    p.set(x, y, !up ? ENV.darkWarm[6] : !left ? ENV.darkWarm[4] : ENV.dark[0]);
+  }
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (!mask[y * W + x]) continue;
     const up = y > 0 && mask[(y - 1) * W + x], up2 = y > 1 && mask[(y - 2) * W + x];
-    p.set(x, y, !up ? ENV.darkWarm[5] : !up2 ? ENV.darkWarm[3] : dith(0.6 - (y / H), x, y) > 0 ? ENV.dark[1] : ENV.dark[0]);
+    p.set(x, y, !up ? ENV.darkWarm[5] : !up2 ? ENV.darkWarm[3] : dith(0.6 - (y - (H - MOUND_H)) / MOUND_H, x, y) > 0 ? ENV.dark[1] : ENV.dark[0]);
   }
   return p;
 }

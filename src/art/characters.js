@@ -26,7 +26,6 @@ function runPose(i, { stride = 40, lean = 12, arm = 50, knee = 72, elbow = 75, b
   };
 }
 const IDLE = { lean: 0, legs: [[-4, 3], [5, 3]], arms: [[-7, 12], [5, 18]], flow: 0 };
-const IDLE_BREATHE = { ...IDLE, breathe: 1, arms: [[-6, 14], [6, 20]] };
 const JUMP = { lean: 6, air: 3, legs: [[-28, 75], [62, 100]], arms: [[-60, 50], [70, 85]], flow: 1.4 };
 const FALL = { lean: 2, air: 0, legs: [[-18, 25], [22, 35]], arms: [[-150, 25], [150, -25]], flow: -1, mouth: 'open', armsBack: true };
 // Family jumps: rising = knee up, fist in the air, hair trailing down; falling = arms out, hair and skirt up.
@@ -66,7 +65,7 @@ function build(s, pose, hipY) {
   const legs = pose.legs.map((l, k) => legAt(s, P(hip.x + (k ? 0.8 : -0.8), hip.y), l));
 
   const lean = pose.lean;
-  const tl = s.torso - (pose.breathe ? 0.6 : 0);
+  const tl = s.torso;
   const neck = along(hip, 180 - lean, tl);
   const up = P((neck.x - hip.x) / tl, (neck.y - hip.y) / tl), fwd = P(-up.y, up.x);
   const local = (fx, uy) => P(hip.x + fwd.x * fx + up.x * uy, hip.y + fwd.y * fx + up.y * uy);
@@ -272,14 +271,14 @@ const WIFE = {
   torso: 11, shoulderDrop: 1.6, neck: 5.8, headFwd: 0.6, arm: [4.8, 4.4], armR: [1.7, 1.5, 1.3], handR: 1.4,
   skinMat: 'skin', sleeve: { mat: 'blue', r: 2.2, len: 1.6 },
 };
-function wifeFrame(pose, { look } = {}) {
+function wifeFrame(pose, { look, blink } = {}) {
   const c = new Canvas(WIFE.w, WIFE.h), sk = skeleton(WIFE, pose);
   drawArm(c, WIFE, sk.arms[0], { dim: FAR });
   drawLeg(c, WIFE, sk.legs[0], { dim: FAR });
   drawLeg(c, WIFE, sk.legs[1], {});
   drawGarment(c, sk, pose, { mat: 'blue', shoulder: 4.5, waist: 4.2, hemDrop: 1.3, hemPad: 1, flare: 1.2, follow: 0.45 });
   c.capsule(sk.local(-4.4, 4.2), sk.local(4.6, 4.2), 0.9, 0.9, 'gold'); // sash
-  headSide(c, sk.head, { style: 'wife', hair: 'hairGirl', dir: look ? -1 : 1, mouth: look ? 'open' : pose.mouth, flow: pose.flow, hairY: pose.hairY });
+  headSide(c, sk.head, { style: 'wife', hair: 'hairGirl', dir: look ? -1 : 1, blink, mouth: look ? 'open' : pose.mouth, flow: pose.flow, hairY: pose.hairY });
   drawArm(c, WIFE, sk.arms[1], {});
   return c.finish();
 }
@@ -289,7 +288,7 @@ const GIRL = {
   torso: 8.6, shoulderDrop: 1.4, neck: 5.4, headFwd: 0.6, arm: [4, 3.8], armR: [1.5, 1.3, 1.1], handR: 1.3,
   skinMat: 'skin', sleeve: { mat: null, r: 1.9, len: 0.45 },
 };
-function girlFrame(dressMat, pose, { front, wink } = {}) {
+function girlFrame(dressMat, pose, { front, wink, blink } = {}) {
   const s = { ...GIRL, sleeve: { ...GIRL.sleeve, mat: dressMat } };
   const c = new Canvas(s.w, s.h);
   if (front) return girlFront(c, s, dressMat, wink);
@@ -299,7 +298,7 @@ function girlFrame(dressMat, pose, { front, wink } = {}) {
   drawLeg(c, s, sk.legs[1], {});
   drawGarment(c, sk, pose, { mat: dressMat, shoulder: 3.6, waist: 3.2, hemDrop: 0.85, hemPad: 1, flare: 1, top: 0.2, follow: 0.4 });
   c.capsule(sk.local(-3.3, 3.4), sk.local(3.5, 3.4), 0.8, 0.8, 'gold'); // belt
-  headSide(c, sk.head, { style: 'girl', hair: 'hairGirl', mouth: pose.mouth, flow: pose.flow, hairY: pose.hairY });
+  headSide(c, sk.head, { style: 'girl', hair: 'hairGirl', blink, mouth: pose.mouth, flow: pose.flow, hairY: pose.hairY });
   drawArm(c, s, sk.arms[1], {});
   return c.finish();
 }
@@ -394,34 +393,35 @@ function angelFrame(flap) {
 
 // ---------- sprite table ----------
 const run = (fn, opts) => Array.from({ length: RUN_FRAMES }, (_, i) => fn(runPose(i, opts)));
-const HANG = [hangPose(0), hangPose(1)];
+const HANG = [hangPose(0)]; // one hanging pose each
+const run4 = (fn, opts) => run(fn, opts).filter((_, i) => i % 2 === 0); // 4-frame cycles, like the PNGs
 // the women run big: long strides, high knees, pumping fists, a bounce, skirts and hair streaming back
 const GIRL_RUN = { stride: 58, lean: 16, arm: 60, knee: 95, elbow: 88, bob: 1.6, sweep: 2 };
 const WIFE_RUN = { stride: 52, lean: 14, arm: 55, knee: 88, elbow: 85, bob: 1.4, sweep: 2.5 };
 const girl = (mat) => ({
-  side: [girlFrame(mat, IDLE), ...run(p => girlFrame(mat, p), GIRL_RUN), girlFrame(mat, HOP), girlFrame(mat, DROP), ...HANG.map(p => girlFrame(mat, p))],
+  side: [girlFrame(mat, IDLE), girlFrame(mat, IDLE, { blink: true }), ...run4(p => girlFrame(mat, p), GIRL_RUN), girlFrame(mat, HOP), girlFrame(mat, DROP), ...HANG.map(p => girlFrame(mat, p))],
   front: [girlFrame(mat, null, { front: true })],
   wink: [girlFrame(mat, null, { front: true, wink: true })],
 });
 const D1 = girl('violet'), D2 = girl('pink');
 
 // Frame layouts (the objects reference these indices):
-//   lot:      0 idle, 1 breathe, 2 blink, 3-10 run, 11 jump, 12 fall, 13 dead, 14-15 hang
-//   wife:     0 idle, 1-8 run, 9 look back (alarmed), 10 jump, 11 fall, 12-13 hang
-//   daughter: 0 idle, 1-8 run, 9 jump, 10 fall, 11-12 hang
-//   sodomite: 0 idle, 1-8 run
+//   lot:      0 idle, 1 blink, 2-5 run, 6 jump, 7 fall, 8 dead, 9 hang
+//   wife:     0 idle, 1 blink, 2-5 run, 6 look back (alarmed), 7 jump, 8 fall, 9 hang
+//   daughter: 0 idle, 1 blink, 2-5 run, 6 jump, 7 fall, 8 hang
+//   sodomite: 0 idle, 1-4 run
 //   angel:    0-3 flap
-export const LOT_FRAMES = { jump: 11, fall: 12, dead: 13 };
-export const WIFE_LOOK_FRAME = 9;
-export const AIR_FRAMES = { wife: { jump: 10, fall: 11 }, daughter1: { jump: 9, fall: 10 }, daughter2: { jump: 9, fall: 10 } };
+export const LOT_FRAMES = { jump: 6, fall: 7, dead: 8 };
+export const WIFE_LOOK_FRAME = 6;
+export const AIR_FRAMES = { wife: { jump: 7, fall: 8 }, daughter1: { jump: 6, fall: 7 }, daughter2: { jump: 6, fall: 7 } };
 export const CHARACTER_SPRITES = {
   lot: { w: LOT.w, h: LOT.h, cx: LOT.cx, body: [24, 40], frames: [
-    lotFrame(IDLE), lotFrame(IDLE_BREATHE), lotFrame(IDLE, { blink: true }),
-    ...run(lotFrame, { bob: 1 }), lotFrame(JUMP), lotFrame(FALL), lotFrame(FALL, { dead: true }),
+    lotFrame(IDLE), lotFrame(IDLE, { blink: true }),
+    ...run4(lotFrame, { bob: 1 }), lotFrame(JUMP), lotFrame(FALL), lotFrame(FALL, { dead: true }),
     ...HANG.map(p => lotFrame(p)),
   ] },
   wife: { w: WIFE.w, h: WIFE.h, cx: WIFE.cx, body: [22, 38], frames: [
-    wifeFrame(IDLE), ...run(wifeFrame, WIFE_RUN), wifeFrame(IDLE, { look: true }),
+    wifeFrame(IDLE), wifeFrame(IDLE, { blink: true }), ...run4(wifeFrame, WIFE_RUN), wifeFrame(IDLE, { look: true }),
     wifeFrame(HOP), wifeFrame(DROP), ...HANG.map(p => wifeFrame(p)),
   ] },
   daughter1: { w: GIRL.w, h: GIRL.h, cx: GIRL.cx, body: [20, 32], frames: D1.side },
@@ -431,24 +431,27 @@ export const CHARACTER_SPRITES = {
   daughter2_front: { w: GIRL.w, h: GIRL.h, frames: D2.front },
   daughter1_wink: { w: GIRL.w, h: GIRL.h, frames: D1.wink },
   daughter2_wink: { w: GIRL.w, h: GIRL.h, frames: D2.wink },
-  sodomite: { w: SODOMITE.w, h: SODOMITE.h, cx: SODOMITE.cx, body: [24, 36], frames: [
+  sodomite: { w: SODOMITE.w, h: SODOMITE.h, cx: SODOMITE.cx, body: [24, 40], frames: [
     sodomiteFrame({ ...IDLE, lean: 8, arms: [[-15, 50], [15, 60]] }),
-    ...run(sodomiteFrame, { stride: 34, lean: 16, arm: 45 }),
+    ...run(sodomiteFrame, { stride: 34, lean: 16, arm: 45 }).filter((_, i) => i % 2 === 0), // 4-frame run like the PNGs
   ] },
   angel: { w: ANGEL.w, h: ANGEL.h, frames: [0, 1, 2, 3].map(angelFrame) },
 };
 
-const RUN_ANIM = [1, 2, 3, 4, 5, 6, 7, 8];
+const BLINK_IDLE = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]; // still, with a blink every ~2s at 5fps (no breathing)
 export const CHARACTER_ANIMS = [
-  ['lot-idle', 'lot', [0, 0, 0, 1, 1, 1, 0, 0, 2, 0, 1, 1], 5, -1],
-  ['lot-run', 'lot', [3, 4, 5, 6, 7, 8, 9, 10], 16, -1],
-  ['lot-hang', 'lot', [14, 15], 6, -1],
-  ['wife-walk', 'wife', RUN_ANIM, 15, -1],
-  ['wife-hang', 'wife', [12, 13], 7, -1],
-  ['daughter1-walk', 'daughter1', RUN_ANIM, 16, -1],
-  ['daughter1-hang', 'daughter1', [11, 12], 8, -1],
-  ['daughter2-walk', 'daughter2', RUN_ANIM, 16, -1],
-  ['daughter2-hang', 'daughter2', [11, 12], 8, -1],
-  ['sodomite-walk', 'sodomite', RUN_ANIM, 10, -1],
+  ['lot-idle', 'lot', BLINK_IDLE, 5, -1],
+  ['lot-run', 'lot', [2, 3, 4, 5], 8, -1],
+  ['lot-hang', 'lot', [9], 1, -1],
+  ['wife-idle', 'wife', BLINK_IDLE, 5, -1],
+  ['wife-walk', 'wife', [2, 3, 4, 5], 7.5, -1],
+  ['wife-hang', 'wife', [9], 1, -1],
+  ['daughter1-idle', 'daughter1', BLINK_IDLE, 5, -1],
+  ['daughter1-walk', 'daughter1', [2, 3, 4, 5], 8, -1],
+  ['daughter1-hang', 'daughter1', [8], 1, -1],
+  ['daughter2-idle', 'daughter2', BLINK_IDLE, 5, -1],
+  ['daughter2-walk', 'daughter2', [2, 3, 4, 5], 8, -1],
+  ['daughter2-hang', 'daughter2', [8], 1, -1],
+  ['sodomite-walk', 'sodomite', [1, 2, 3, 4], 5, -1],
   ['angel-flap', 'angel', [0, 1, 2, 3], 10, -1],
 ];

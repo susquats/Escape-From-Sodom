@@ -2,6 +2,7 @@ import { run } from '../runState.js';
 import { MOUNTAIN } from '../config.js';
 import { ART_SCALE } from '../view.js';
 import { AIR_FRAMES } from '../art/characters.js';
+import { standIdle } from '../art/sprites.js';
 
 // Surviving family members hop up the mountain behind Lot, replaying his recent path (visual only).
 // On the summit they walk after him but stop short of stopX (the cave mouth) and wait there.
@@ -48,7 +49,7 @@ export default class MountainFollowers {
       sprite.setPosition(x, h.y).setFlipX(waiting ? false : h.flip);
       if (!h.ground || this.stopX === Infinity) { sprite.anims.stop(); sprite.setFrame(h.vy < 0 ? AIR_FRAMES[key].jump : AIR_FRAMES[key].fall); }
       else if (moving) sprite.anims.play(`${key}-walk`, true);
-      else { sprite.anims.stop(); sprite.setFrame(0); }
+      else standIdle(sprite, key);
     });
   }
 

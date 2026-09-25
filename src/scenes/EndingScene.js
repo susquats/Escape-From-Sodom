@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { run } from '../runState.js';
-import { letterbox } from '../fx.js';
+import { letterbox, playMusic, sfx, getVolume } from '../fx.js';
 import { setupView, fadeIn, fadeOut } from '../view.js';
 import { loadEndingArt, buildEndingArt } from '../art/endingArt.js';
 
@@ -16,6 +16,10 @@ export default class EndingScene extends Phaser.Scene {
   }
 
   create() {
+    playMusic(this, 'ending-comet', 0.5, 'mesopotamian-ruins');
+    const snore = this.sound.add('snoring', { loop: true, volume: 0.6 * getVolume('sfx') });
+    snore.play();
+    this.events.once('shutdown', () => { snore.stop(); snore.destroy(); });
     setupView(this);
     buildEndingArt(this);
     const layout = this.cache.json.get('end-layout');
@@ -41,6 +45,7 @@ export default class EndingScene extends Phaser.Scene {
     // winks at the camera, with a sparkle
     const wink = () => sprites.forEach(({ s, d }, i) => this.time.delayedCall(i * 250, () => {
       s.setTexture(`end-${d}-wink`);
+      sfx(this, 'pickupCoin', 0.5);
       const [ex, ey] = layout.daughters[d].eye;
       const sp = this.add.image(ex + 5, ey - 4, 'end-sparkle').setDepth(8).setScale(0.3);
       this.tweens.add({ targets: sp, scale: 1, duration: 200, ease: 'Back.out', yoyo: true, hold: 200, onComplete: () => sp.destroy() });

@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SODOMITE } from '../config.js';
-import { popText, puff, sfx } from '../fx.js';
+import { popText, puff, sfx, sfxNear, voice } from '../fx.js';
 import { viewX, ART_SCALE } from '../view.js';
 import { fitBody } from '../art/sprites.js';
 import { t } from '../i18n.js';
+
+let lastGroan = 0; // shared, so a crowd doesn't stack the sound
 
 export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -29,6 +31,8 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
       else { this.setVelocityX(0); return; }
     }
     this.play('sodomite-walk', true);
+    const now = this.scene.time.now;
+    if (now - lastGroan > 2600 && sfxNear(this.scene, 'sodomite', Math.abs(lot.x - this.x), 110, 0.6)) lastGroan = now;
     const dx = lot.x - this.x;
     if (Math.abs(dx) > 4) this.dir = Math.sign(dx);
     this.setVelocityX(this.dir * SODOMITE.speed);
@@ -58,7 +62,7 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
 
   squash() {
     this.flatten();
-    sfx(this.scene, 'hitHurt2');
+    voice(this.scene, 'squish');
     puff(this.scene, this.x, this.y, 0xffffff);
     popText(this.scene, this.x, this.y - 8, t('pop.squish'));
   }
@@ -74,7 +78,7 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
     this.anims.stop();
     this.alive = false;
     this.body.enable = false;
-    sfx(this.scene, 'hitHurt2');
+    voice(this.scene, 'bonk');
     popText(this.scene, this.x, this.y - 8, t('pop.bonk'), '#ffe14a');
     this.scene.tweens.add({ targets: this, x: this.x + (Math.sign(this.x - fromX) || 1) * 60,
       y: this.y - 40, angle: 540, alpha: 0, duration: 600, onComplete: () => this.setVisible(false) });

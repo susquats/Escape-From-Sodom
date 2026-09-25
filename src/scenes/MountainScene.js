@@ -5,11 +5,12 @@ import Controls from '../input/Controls.js';
 import RunHud from '../ui/RunHud.js';
 import MountainFollowers from '../objects/MountainFollowers.js';
 import { run } from '../runState.js';
-import { popText, puff, sfx, loseLife, speech, letterbox } from '../fx.js';
+import { popText, puff, sfx, voice, loseLife, speech, letterbox, playMusic } from '../fx.js';
 import { setupView, fadeIn, fadeOut, shake, setViewY, viewY, ART_SCALE } from '../view.js';
 import { buildMountainArt, buildCliff, ledgeKey, SUMMIT_LIP, LEDGE_HEADROOM, CITY_X, HORIZON, PEAK } from '../art/mountainArt.js';
 import { noise1 } from '../art/pix.js';
 import { AIR_FRAMES, LOT_FRAMES } from '../art/characters.js';
+import { standIdle } from '../art/sprites.js';
 import { t } from '../i18n.js';
 
 let cliffChunks = null; // painted cliff (src/art/mountainArt.js buildCliff)
@@ -22,6 +23,7 @@ export default class MountainScene extends Phaser.Scene {
 
   create() {
     setupView(this);
+    playMusic(this, 'newer-ashes-of-ur');
     this.physics.world.gravity.y = MOVE.gravity;
     const H = MOUNTAIN.height;
     this.dead = false;
@@ -253,13 +255,13 @@ export default class MountainScene extends Phaser.Scene {
     lot.setFlipX(false);
     await Promise.all(crew.map(({ key, sprite }, i) => new Promise(r => {
       sprite.anims.play(`${key}-walk`, true);
-      this.tweens.add({ targets: sprite, x: lot.x - 14 * (i + 1), y: ground, duration: 350, onComplete: () => { sprite.anims.stop(); sprite.setFrame(0); r(); } });
+      this.tweens.add({ targets: sprite, x: lot.x - 14 * (i + 1), y: ground, duration: 350, onComplete: () => { standIdle(sprite, key); r(); } });
     })));
     const cheers = [{ o: lot, jump: LOT_FRAMES.jump, idle: () => lot.play('lot-idle', true) },
-      ...crew.map(({ key, sprite }) => ({ o: sprite, jump: AIR_FRAMES[key].jump, idle: () => { sprite.anims.stop(); sprite.setFrame(0); } }))];
+      ...crew.map(({ key, sprite }) => ({ o: sprite, jump: AIR_FRAMES[key].jump, idle: () => standIdle(sprite, key) }))];
     lot.body.enable = false;
     for (let n = 0; n < 3; n++) {
-      if (n === 0) cheers.forEach(({ o }, i) => speech(this, o.x, (o.body ? o.body.top : o.y - 20) - 3 - (i % 2) * 12, 1600, t('say.cheer')));
+      if (n === 0) speech(this, lot.x, lot.body.top - 3, 1600, t('say.cheer'));
       cheers.forEach(({ o, jump }, i) => this.time.delayedCall(i * 90, () => {
         o.anims.stop(); o.setFrame(jump);
         puff(this, o.x, ground - 12, i % 2 ? 0xffe14a : 0xffffff, 5);
@@ -283,8 +285,13 @@ export default class MountainScene extends Phaser.Scene {
     if (this.walkTo) {
       // Lot walks himself to the gathering spot
       const dx = this.walkTo.x - lot.x;
-      lot.update({ left: dx < -2, right: dx > 2, jumpDown: false, jumpPressed: false }, delta);
-      if (Math.abs(dx) <= 2 && Math.abs(lot.body.velocity.x) < 8 && this.walkTo.done) { const d = this.walkTo.done; this.walkTo.done = null; d(); }
+      // arrival is a window, not a point: with instant turnaround he can overshoot a 2px target forever
+      const arrived = Math.abs(dx) <= 6;
+      lot.update({ left: !arrived && dx < 0, right: !arrived && dx > 0, jumpDown: false, jumpPressed: false }, delta);
+      if (arrived) {
+        lot.body.setVelocityX(0);
+        if (this.walkTo.done) { const d = this.walkTo.done; this.walkTo.done = null; d(); }
+      }
     } else if (this.entered) {
       lot.update({ right: true, jumpDown: false, jumpPressed: false }, delta);
     }
@@ -303,7 +310,7 @@ export default class MountainScene extends Phaser.Scene {
   // Lot is inside. Any daughters left pull out a jug of wine, talk it over ("..."), and follow him in.
   async familyEnters() {
     this.familyEntering = true;
-    const end = () => fadeOut(this, 600, () => this.scene.start('EndingScene'));
+    const end = () => fadeOut(this, 600, () => { this.scene.start('EndingScene'); });
     const girls = this.followers.members.filter(m => m.sprite.active && !m.sprite.lostAt).map(m => m.sprite);
     if (!girls.length) { this.time.delayedCall(300, end); return; }
     const wait = (ms) => new Promise(r => this.time.delayedCall(ms, r));
@@ -348,6 +355,7 @@ export default class MountainScene extends Phaser.Scene {
 
   die() {
     const cam = this.cameras.main;
+    voice(this, 'ahhh');
     popText(this, this.lot.x, viewY(cam) + GAME_HEIGHT - 10, t('pop.aaah'));
     shake(this, 200, 0.01);
     const { gameOver, name } = loseLife(this);
@@ -362,7 +370,7 @@ export default class MountainScene extends Phaser.Scene {
       return;
     }
     this.dead = true;
-    this.time.delayedCall(700, () => this.scene.start('TitleScene'));
+    this.time.delayedCall(700, () => this.scene.restart());
   }
 
   // A fallen daughter turns to salt on the next ledge up; touching it brings her back.

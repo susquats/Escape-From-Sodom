@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { VENT } from '../config.js';
 import { ART_SCALE } from '../view.js';
+import { sfxNear } from '../fx.js';
 
 export default class FireVent extends Phaser.GameObjects.Sprite {
   constructor(scene, x, groundY, phaseOffsetMs = 0) {
@@ -33,6 +34,7 @@ export default class FireVent extends Phaser.GameObjects.Sprite {
       this.setVisible(true).setScale(ART_SCALE, 0.25 * ART_SCALE);
       this.setAlpha(Math.floor(t / 60) % 2 ? 0.3 : 1);
     } else {
+      if (this.ventState !== 'on' && this.scene.lot) sfxNear(this.scene, 'firevent', Math.abs(this.scene.lot.x - this.x), 220, 0.6);
       this.ventState = 'on';
       this.setVisible(true).setAlpha(1).setScale((1 + Math.sin(t / 40) * 0.12) * ART_SCALE, ART_SCALE);
     }

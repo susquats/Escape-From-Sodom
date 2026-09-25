@@ -5,6 +5,7 @@ import { run, resetRun } from '../runState.js';
 import { creditLines } from '../credits.js';
 import { setupView, fadeIn, fadeOut } from '../view.js';
 import { t } from '../i18n.js';
+import { playMusic, isMusicPlaying } from '../fx.js';
 
 const SCROLL_SPEED = 14;  // px/s
 const FAST_MUL = 4;
@@ -18,6 +19,7 @@ export default class CreditsScene extends Phaser.Scene {
   }
 
   create() {
+    if (!isMusicPlaying('ending-comet')) playMusic(this, 'mesopotamian-ruins');
     setupView(this);
     this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000).setOrigin(0);
 
@@ -47,7 +49,7 @@ export default class CreditsScene extends Phaser.Scene {
     this.starting = false;
     this.ready = false;
 
-    this.controls = new Controls(this, { touchButtons: [] });
+    this.controls = new Controls(this, { touchButtons: ['pause'] });
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
 
     this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);

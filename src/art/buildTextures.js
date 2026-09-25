@@ -1,10 +1,13 @@
 import { PALETTE } from './palette.js';
 import { SPRITES, ANIMS } from './sprites.js';
+import { PNG_SPRITES, buildPngSprites } from './pngSprites.js';
+import { paintFrame } from './rig.js';
 
 // Paints every sprite into a canvas texture with numbered frames (0..n-1), then registers animations.
 // A frame is either ASCII rows (palette chars) or a rendered { px } frame from rig.js.
 export function buildTextures(scene) {
   for (const [key, { w, h, frames, px = 1 }] of Object.entries(SPRITES)) {
+    if (key in PNG_SPRITES) continue; // hand-drawn PNG replaces the generated sprite (pngSprites.js)
     // px: texture pixels per ASCII character (2 = a low-detail sprite blown up to hi-res size)
     if (scene.textures.exists(key)) scene.textures.remove(key);
     const W = w * px, H = h * px;
@@ -12,13 +15,7 @@ export function buildTextures(scene) {
     const ctx = tex.getContext();
     frames.forEach((frame, f) => {
       if (frame.px) {
-        const img = ctx.createImageData(w, h);
-        frame.px.forEach((c, i) => {
-          if (!c) return;
-          const n = parseInt(c.slice(1), 16);
-          img.data.set([n >> 16, (n >> 8) & 255, n & 255, 255], i * 4);
-        });
-        ctx.putImageData(img, f * W, 0);
+        paintFrame(ctx, frame, f * W, w, h);
       } else {
         if (frame.length !== h) throw new Error(`sprite ${key} frame ${f}: ${frame.length} rows, expected ${h}`);
         frame.forEach((row, y) => {
@@ -36,6 +33,8 @@ export function buildTextures(scene) {
     });
     tex.refresh();
   }
+
+  buildPngSprites(scene);
 
   for (const [animKey, texKey, frames, frameRate, repeat] of ANIMS) {
     if (scene.anims.exists(animKey)) continue;

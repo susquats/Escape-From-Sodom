@@ -178,12 +178,13 @@ function farSkyline(calm) {
       const base = tell(x + (w >> 1)) + sink;
       // leave the ziggurat's stairway and face clear of the back row
       if (!(row === 0 && Math.abs(x + w / 2 - 308) < 90) && !(row === 0 && Math.abs(x + w / 2 - 800) < 40)) {
+        // a broken house loses its roof line (and anything on it); only its own pixels are skipped, so the
+        // houses and mound behind it still show through instead of sky holes with roofs floating above them
         const broken = !calm && r(3) < 0.18;
-        const boxes = house(layer(L), x, base, w, h, i + row * 500, { upper: 0.45, shelter: calm ? 0.35 : 0.12 });
-        if (broken) for (let xx = 0; xx < w; xx++) {
-          const d = Math.floor(noise1((x + xx) / 4, 72 + row) * 10);
-          for (let y = base - h - 12; y < base - h - 2 + d; y++) if (at(x + xx, y) === L) shape[y * FAR_W + ((x + xx) % FAR_W)] = 0;
-        }
+        const put = broken
+          ? (X, y) => { if (y >= base - h - 2 + Math.floor(noise1(X / 4, 72 + row) * 10)) layer(L)(X, y); }
+          : layer(L);
+        const boxes = house(put, x, base, w, h, i + row * 500, { upper: 0.45, shelter: calm ? 0.35 : 0.12 });
         for (const B of boxes) {
           if (r(4) < 0.6) beams.push([B.x, B.y + 2, B.w, L]);
           // one or two small windows high on the wall

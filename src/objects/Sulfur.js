@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SULFUR } from '../config.js';
-import { puff, sfx } from '../fx.js';
+import { puff, sfx, sfxNear } from '../fx.js';
 import { viewY, ART_SCALE } from '../view.js';
 import { COMET_HEAD } from '../art/items.js';
 
@@ -15,6 +15,7 @@ export default class Sulfur {
     this.markers = [];
     this.timer = SULFUR.startIntervalMs;
     this.stopped = false;
+    this.lastCometSound = -1e9;
   }
 
   update(delta, lot, cam) {
@@ -55,6 +56,9 @@ export default class Sulfur {
   }
 
   drop(x, y, slope) {
+    const lot = this.scene.lot, now = this.scene.time.now;
+    const landX = x + slope * (lot.y - y);
+    if (now - this.lastCometSound > 2200 && sfxNear(this.scene, 'comet', Math.abs(landX - lot.x), 150, 0.35)) this.lastCometSound = now;
     const b = this.balls.create(x, y, 'fireball').setScale(ART_SCALE).setDepth(500);
     const vx = SULFUR.fallSpeed * slope, vy = SULFUR.fallSpeed;
     // the comet sprite flies toward the bottom right with its head at COMET_HEAD: pivot on the head,

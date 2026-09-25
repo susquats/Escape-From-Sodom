@@ -1,9 +1,10 @@
 import { GAME_WIDTH, GAME_HEIGHT, ZOOM } from './config.js';
 
 // The canvas is GAME_WIDTH*ZOOM x GAME_HEIGHT*ZOOM; the main camera zooms in by ZOOM so the world still
-// measures GAME_WIDTH x GAME_HEIGHT units. Art textures are drawn at ZOOM x size and shown at ART_SCALE,
-// so one texture pixel = one screen pixel.
-export const ART_SCALE = 1 / ZOOM;
+// measures GAME_WIDTH x GAME_HEIGHT units. Art textures are drawn at 2x size and shown at ART_SCALE, so one
+// texture pixel = 2x2 canvas pixels. The PNG sprites (art/pngSprites.js) carry twice that detail: one of
+// their texture pixels = one canvas pixel.
+export const ART_SCALE = 0.5;
 
 // With zoom, cam.scrollX is NOT the left edge of the view. Always use these for view edges.
 const padX = (cam) => (cam.width - cam.width / cam.zoom) / 2;

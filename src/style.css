@@ -43,6 +43,7 @@ canvas {
 
 /* On-screen controls: pinned to the screen edges, i.e. inside the letterbox bars on wide phones. */
 #touch-controls { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+#pause-button { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
 /* Mesopotamian tablet look: gold-rimmed lapis lazuli slabs with stepped (ziggurat) corners */
 .tc-hit {
   --pad: 18px; /* invisible touch target around the visible tablet */
@@ -102,8 +103,31 @@ canvas {
 
 #pause-overlay {
   position: fixed; inset: 0; z-index: 20;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
   background: rgba(0, 0, 0, 0.65); color: #fff; font-family: monospace; text-align: center;
 }
-#pause-overlay div { font-size: 32px; font-weight: bold; }
-#pause-overlay small { font-size: 14px; opacity: 0.7; }
+#pause-overlay > div:first-child { font-size: 32px; font-weight: bold; }
+
+.pause-menu {
+  display: flex; flex-direction: column; gap: 12px; align-items: center;
+}
+
+.pause-btn {
+  background: linear-gradient(#f6d873, #b07a1c);
+  border: 2px solid #8a5a1a;
+  color: #1a0d2e;
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 12px 32px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.1s;
+  min-width: 140px;
+}
+
+.pause-btn:hover { background: linear-gradient(#fff9c4, #c88a2c); transform: scale(1.05); }
+.pause-btn:active { transform: scale(0.98); }
+
+.vol-row { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: bold; align-items: center; }
+.vol-row input { width: 200px; accent-color: #f6d873; cursor: pointer; }
