@@ -3,6 +3,7 @@ import { MOVE, ANGEL } from '../config.js';
 import { ART_SCALE } from '../view.js';
 import { fitBody } from '../art/sprites.js';
 import { LOT_FRAMES } from '../art/characters.js';
+import { sfx } from '../fx.js';
 
 export default class Lot extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -62,6 +63,7 @@ export default class Lot extends Phaser.Physics.Arcade.Sprite {
     // jump
     if (this.jumpBufferTimer > 0 && this.coyoteTimer > 0) {
       body.setVelocityY(-MOVE.jumpVelocity);
+      sfx(this.scene, 'jump', 0.3);
       this.jumpBufferTimer = 0;
       this.coyoteTimer = 0;
       this.jumpCut = false;

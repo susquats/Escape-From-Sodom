@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { FAMILY, GAME_HEIGHT } from '../config.js';
-import { popText, puff } from '../fx.js';
+import { popText, puff, sfx } from '../fx.js';
 import { run } from '../runState.js';
 import { shake, viewY, ART_SCALE } from '../view.js';
 import { fitBody } from '../art/sprites.js';
@@ -139,6 +139,7 @@ export default class FamilyMember extends Phaser.Physics.Arcade.Sprite {
 
   rescue() {
     if (this.state !== 'salted') return;
+    sfx(this.scene, 'powerUp2');
     popText(this.scene, this.salt.x, this.salt.y - 10, t('pop.saved'), '#ffe14a');
     puff(this.scene, this.salt.x, this.salt.y, 0xffe14a);
     this.setPosition(this.salt.x, this.salt.body.bottom);

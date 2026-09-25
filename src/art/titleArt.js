@@ -1,7 +1,8 @@
 // Title screen art, painted in code at 2x density: a night sky, a band of rising flames (looping frames),
-// the black city in front, the "ESCAPE FROM SODOM" logo, and a small 5x7 pixel font for menu text.
+// the black silhouette of the ancient city in front, the "ESCAPE FROM SODOM" logo, and a small 5x7 pixel font for menu text.
 import { LANGS, tIn as t } from '../i18n.js';
 import { Pix, hash, noise1, noise2, dith, pixTexture } from './pix.js';
+import { house, ziggurat, palm, cityWall } from './ancientCity.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const W = 640, H = 360;
@@ -154,58 +155,61 @@ function flameFrame(f) {
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// City: a dark red back row with tall spires, a black front row with a few burning windows, black ground.
+// City: an ancient city in silhouette. A dark red back row of flat-roofed houses climbing to a great stepped
+// ziggurat, a black front row of houses, palms and a stretch of wall with stepped merlons, black ground.
 export const CITY_H = 200;
 const GROUND = 150;
 
 function city() {
   const p = new Pix(W, CITY_H);
-  const layer = (seed, minH, maxH, body, rim, win, winRate) => {
-    const top = new Int16Array(W).fill(CITY_H);
-    const rect = (x0, y0, w, h) => { for (let x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) top[x] = Math.min(top[x], y0); void h; };
-    const windows = [];
-    let x = -10, i = 0;
-    while (x < W) {
-      const r = (k) => hash(i, k, seed);
-      const w = 16 + Math.floor(r(1) * 30), h = minH + Math.floor(r(2) * (maxH - minH)), t = GROUND - h;
-      rect(x, t, w, h);
-      const kind = r(3);
-      if (kind < 0.3) {
-        // tower with a needle spire
-        const tw = 6 + Math.floor(r(4) * 6), tx = x + Math.floor((w - tw) / 2), th = 14 + Math.floor(r(5) * 30);
-        rect(tx, t - th, tw, th);
-        for (let k = 0; k < 18; k++) rect(tx + (tw >> 1) - (k < 6 ? 0 : 1), t - th - 18 + k, k < 6 ? 1 : 2, 1);
-      } else if (kind < 0.45) {
-        // dome
-        const rr = Math.floor(w * 0.4), cx = x + w / 2;
-        for (let yy = -rr; yy <= 0; yy++) { const hw = Math.floor(Math.sqrt(rr * rr - yy * yy)); rect(Math.round(cx - hw), t + yy, hw * 2, 1); }
-        rect(Math.round(cx), t - rr - 5, 1, 5);
-      } else if (kind < 0.65) {
-        // pitched roof with small corner turrets
-        for (let k = 0; k < w / 2; k++) rect(x + k, t - Math.floor(k * 0.7), w - k * 2, 1);
-        rect(x, t - 8, 3, 8); rect(x + w - 3, t - 8, 3, 8);
-      } else if (kind < 0.8) {
-        // crenellations
-        for (let xx = 0; xx < w; xx += 5) rect(x + xx, t - 4, 3, 4);
-      }
-      for (let wy = t + 5; wy < GROUND - 4; wy += 9) for (let wx = x + 3; wx < x + w - 3; wx += 6) {
-        if (hash(wx, wy, seed + 1) < winRate) windows.push([wx, wy]);
-      }
-      x += w - Math.floor(r(6) * 6);
-      i++;
+  const layer = (seed, build, body, rim, win, winRate) => {
+    const mask = new Uint8Array(W * CITY_H);
+    const put = (x, y) => { if (x >= 0 && x < W && y >= 0 && y < CITY_H) mask[y * W + x] = 1; };
+    const has = (x, y) => x >= 0 && x < W && y >= 0 && y < CITY_H && mask[y * W + x] === 1;
+    for (let x = 0; x < W; x++) for (let y = GROUND; y < CITY_H; y++) put(x, y);
+    const walls = build(put, seed);
+    for (let y = 0; y < CITY_H; y++) for (let x = 0; x < W; x++) {
+      if (!has(x, y)) continue;
+      p.set(x, y, !has(x, y - 1) && y < GROUND ? rim : body);
     }
-    for (let x = 0; x < W; x++) for (let y = top[x]; y < CITY_H; y++) {
-      const edge = y === top[x] || (x > 0 && y < top[x - 1]);
-      p.set(x, y, edge && y < GROUND ? rim : body);
-    }
-    for (const [wx, wy] of windows) {
-      if (top[wx] > wy - 2 || top[wx + 1] > wy - 2) continue;
+    // a few small windows high on the house walls
+    for (const B of walls) for (let wx = B.x + 3; wx < B.x + B.w - 4; wx += 7) {
+      const wy = B.y + 4;
+      if (hash(wx, wy, seed + 1) > winRate || !has(wx, wy - 3) || !has(wx + 1, wy + 3)) continue;
       const hot = hash(wx, wy, seed + 2);
       for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < 2; xx++) p.set(wx + xx, wy + yy, yy === 0 && hot < 0.3 ? win[1] : win[0]);
     }
   };
-  layer(95, 50, 110, '#1c0612', '#4a0e1e', ['#6a1418', '#9a2418'], 0.12);
-  layer(96, 16, 64, '#040103', '#2a0810', ['#c8341a', '#ffa032'], 0.07);
+  const houses = (put, seed, x0, x1, minH, varH, walls, skip = () => false) => {
+    let x = x0, i = 0;
+    while (x < x1) {
+      const r = (k) => hash(i, k, seed);
+      const w = 14 + Math.floor(r(1) * 22), h = minH + Math.floor(r(2) * varH);
+      if (!skip(x + w / 2)) walls.push(...house(put, x, GROUND + 2, w, h, i + seed * 100, { upper: 0.5, shelter: 0.25 }));
+      x += w + Math.floor(r(3) * 3) - 1;
+      i++;
+    }
+  };
+  // back row: houses rising toward the ziggurat, a second smaller temple terrace on the left
+  layer(95, (put, seed) => {
+    const walls = [];
+    const hill = (x) => Math.round(18 * Math.exp(-(((x - 470) / 170) ** 2)));
+    houses(put, seed, -10, W, 30, 22, walls, (cx) => Math.abs(cx - 470) < 60);
+    // the tell under the houses nearest the temple
+    for (let x = 0; x < W; x++) for (let y = GROUND - 30 - hill(x); y < GROUND; y++) if (hill(x) > 2) put(x, y);
+    ziggurat(put, 470, GROUND - 20, 150, 20, 5);
+    ziggurat(put, 120, GROUND - 40, 60, 14, 2);
+    for (const [x, s] of [[40, 1.2], [260, 1.4], [600, 1.1]]) palm(put, x, GROUND - 20, s, x);
+    return walls;
+  }, '#1c0612', '#4a0e1e', ['#6a1418', '#9a2418'], 0.35);
+  // front row: low houses, palms, and a stretch of the city wall with a tower
+  layer(96, (put, seed) => {
+    const walls = [];
+    houses(put, seed, -10, W, 10, 34, walls, (cx) => cx > 300 && cx < 420);
+    cityWall(put, 300, 420, GROUND - 26, GROUND + 2, 70, 22, 14, 2);
+    for (const [x, s] of [[90, 1.5], [230, 1.8], [450, 1.3], [560, 1.7]]) palm(put, x, GROUND + 2, s, x + 1);
+    return walls;
+  }, '#040103', '#2a0810', ['#c8341a', '#ffa032'], 0.2);
   return p;
 }
 

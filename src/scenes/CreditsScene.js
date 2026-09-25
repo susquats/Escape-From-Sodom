@@ -9,6 +9,7 @@ import { t } from '../i18n.js';
 const SCROLL_SPEED = 14;  // px/s
 const FAST_MUL = 4;
 const LINE_GAP = 12;
+const ROW_WIDTH = 240;
 const STROKE = { fontFamily: 'monospace', fontSize: '8px', color: '#ffffff', stroke: '#000', strokeThickness: 2 };
 
 export default class CreditsScene extends Phaser.Scene {
@@ -23,9 +24,21 @@ export default class CreditsScene extends Phaser.Scene {
     const lines = creditLines(run.lost);
     this.container = this.add.container(0, 190);
     lines.forEach((line, i) => {
-      this.container.add(
-        this.add.text(GAME_WIDTH / 2, i * LINE_GAP, line, STROKE).setOrigin(0.5, 0),
-      );
+      const y = i * LINE_GAP;
+      const cx = GAME_WIDTH / 2;
+      if (Array.isArray(line)) {
+        // Name flush left, role flush right, dotted leader filling the gap
+        const half = ROW_WIDTH / 2;
+        const name = this.add.text(cx - half, y, line[0], STROKE).setOrigin(0, 0);
+        const role = this.add.text(cx + half, y, line[1], STROKE).setOrigin(1, 0);
+        const dot = this.add.text(0, 0, '.', STROKE);
+        const gap = role.x - role.width - (name.x + name.width) - 8;
+        const dots = this.add.text(name.x + name.width + 4, y, '.'.repeat(Math.max(2, Math.floor(gap / dot.width))), STROKE).setOrigin(0, 0);
+        dot.destroy();
+        this.container.add([name, dots, role]);
+      } else {
+        this.container.add(this.add.text(cx, y, line, STROKE).setOrigin(0.5, 0));
+      }
     });
     this.totalLines = lines.length;
 
@@ -37,10 +50,7 @@ export default class CreditsScene extends Phaser.Scene {
     this.controls = new Controls(this, { touchButtons: [] });
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
 
-    // Tap / click to play again on the final card
-    this.input.on('pointerdown', () => {
-      if (this.showingCard && this.ready) this.playAgain();
-    });
+    this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
     fadeIn(this, 400);
   }
@@ -48,20 +58,20 @@ export default class CreditsScene extends Phaser.Scene {
   showFinalCard() {
     this.scrolling = false;
     this.tweens.add({ targets: this.container, alpha: 0, duration: 500, onComplete: () => {
-      const n = 3 - run.lost.size;
       const cx = GAME_WIDTH / 2;
-      const baseY = 50;
-
-      this.add.text(cx, baseY, t('card.saved', { n }), STROKE).setOrigin(0.5);
-      this.add.text(cx, baseY + 14, t(`rating.${n}`), {
-        fontFamily: 'monospace', fontSize: '8px', color: '#ffe14a',
-        stroke: '#000', strokeThickness: 2,
-      }).setOrigin(0.5);
-      this.add.text(cx, baseY + 32, t('card.thanks'), STROKE).setOrigin(0.5);
-
       const touch = this.sys.game.device.input.touch;
-      const prompt = this.add.text(cx, baseY + 52, t(touch ? 'card.againTouch' : 'card.again'), STROKE).setOrigin(0.5);
-      this.tweens.add({ targets: prompt, alpha: 0.15, duration: 520, yoyo: true, repeat: -1 });
+      const make = (y, key, action) => {
+        const txt = this.add.text(cx, y, t(key), STROKE).setOrigin(0.5);
+        if (touch) {
+          // Generous tap target on mobile
+          txt.setPadding(24, 8).setInteractive({ useHandCursor: true });
+          txt.on('pointerdown', () => { if (this.ready) action(); });
+        }
+        return txt;
+      };
+      const again = make(GAME_HEIGHT / 2 - 12, touch ? 'card.againTouch' : 'card.again', () => this.playAgain());
+      make(GAME_HEIGHT / 2 + 12, touch ? 'card.menuTouch' : 'card.menu', () => this.toMenu());
+      this.tweens.add({ targets: again, alpha: 0.4, duration: 520, yoyo: true, repeat: -1 });
 
       this.showingCard = true;
       this.time.delayedCall(500, () => { this.ready = true; });
@@ -75,6 +85,8 @@ export default class CreditsScene extends Phaser.Scene {
       const justEnter = Phaser.Input.Keyboard.JustDown(this.enterKey);
       if (this.showingCard && (this.controls.jumpPressed || justEnter)) {
         this.playAgain();
+      } else if (this.showingCard && Phaser.Input.Keyboard.JustDown(this.escKey)) {
+        this.toMenu();
       }
       return;
     }
@@ -95,6 +107,13 @@ export default class CreditsScene extends Phaser.Scene {
   }
 
   playAgain() {
+    if (this.starting) return;
+    this.starting = true;
+    resetRun();
+    fadeOut(this, 300, () => this.scene.start('SodomScene'));
+  }
+
+  toMenu() {
     if (this.starting) return;
     this.starting = true;
     resetRun();

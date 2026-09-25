@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { puff } from '../fx.js';
+import { puff, sfx } from '../fx.js';
 import { ART_SCALE } from '../view.js';
 
 export default class Halo extends Phaser.Physics.Arcade.Sprite {
@@ -16,6 +16,7 @@ export default class Halo extends Phaser.Physics.Arcade.Sprite {
   }
 
   collect() {
+    sfx(this.scene, 'powerUp');
     puff(this.scene, this.x, this.y, 0xffe14a);
     this.destroy();
   }

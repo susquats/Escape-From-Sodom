@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SULFUR } from '../config.js';
-import { puff } from '../fx.js';
+import { puff, sfx } from '../fx.js';
 import { viewY, ART_SCALE } from '../view.js';
 import { COMET_HEAD } from '../art/items.js';
 
@@ -70,6 +70,7 @@ export default class Sulfur {
   impact(ball) {
     if (!ball.active) return;
     const scene = this.scene;
+    sfx(scene, 'explosion', 0.25);
     puff(scene, ball.x, ball.y, 0xff8a1e);
     const f = this.flames.create(ball.x, ball.body.bottom, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(500);
     f.body.setSize(16, 16); // texture pixels (= 8x8 world)

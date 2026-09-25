@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, TILE, DEBUG, MOVE, FAMILY } from '../config.js';
+import { WORLD_W, WORLD_H, STREET, SALT_X, CLIFF_X, LOT_START_X, LAYOUT, groundTop, addWildernessBackdrop, addWildernessGround } from '../levels/wilderness.js';
 import Lot from '../objects/Lot.js';
 import Controls from '../input/Controls.js';
 import Trail from '../objects/Trail.js';
@@ -9,27 +10,15 @@ import { setupView, fadeIn, fadeOut, setViewX, shake, viewX, viewY, ART_SCALE } 
 import { puff, speech } from '../fx.js';
 import { pixTexture } from '../art/pix.js';
 import { comet, COMET_HEAD } from '../art/comet.js';
-import { buildWildernessArt, WILD, GROUND_Y0 } from '../art/wildernessArt.js';
 import { t } from '../i18n.js';
-
-const WORLD_W = 960;
-const WORLD_H = 180;
-const STREET = 9; // ground top y = 144
-const SALT_X = 500; // Lot's x where his wife looks back for the last time (a flat stretch)
-const CLIFF_X = 882; // the foot of the mountain's cliff: the walk ends here
-// ground blocks [tile x, tile y of the top, width in tiles]
-const LAYOUT = [[0, STREET, 14], [14, STREET - 1, 10], [24, STREET, 20], [44, STREET - 1, 16]];
-const groundTop = (x) => {
-  const b = LAYOUT.find(([tx, , w]) => x >= tx * TILE && x < (tx + w) * TILE) || LAYOUT[LAYOUT.length - 1];
-  return b[1] * TILE;
-};
 
 export default class WildernessScene extends Phaser.Scene {
   constructor() {
     super('WildernessScene');
   }
 
-  create() {
+  // data.fromFlight: the flight's landing hands over without a cut (same backdrop, same spots, letterbox still up)
+  create(data) {
     setupView(this);
     this.physics.world.gravity.y = MOVE.gravity;
     this.exiting = false;
@@ -37,11 +26,11 @@ export default class WildernessScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.physics.world.setBoundsCollision(true, true, true, false);
 
-    this.buildBackground();
     this.terrain = this.physics.add.staticGroup();
+    this.buildBackground();
     this.buildLevel();
 
-    this.lot = new Lot(this, 80, STREET * TILE - 10);
+    this.lot = new Lot(this, LOT_START_X, STREET * TILE - 10);
     this.physics.add.collider(this.lot, this.terrain);
     this.trail = new Trail(this.lot.x, STREET * TILE, FAMILY.trailMaxLength);
     this.family = new Family(this, this.trail, this.terrain);
@@ -53,11 +42,18 @@ export default class WildernessScene extends Phaser.Scene {
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, WORLD_W, WORLD_H);
-    cam.startFollow(this.lot, true, 0.12, 0.12);
     cam.setDeadzone(40, 30);
     cam.setFollowOffset(-30, 0);
     setViewX(cam, 0);
-    fadeIn(this, 400);
+    // the camera holds still (as it did in the flight) until Lot starts walking
+    this.following = false;
+    if (data && data.fromFlight) {
+      const bars = [0, 1].map(i => this.add.rectangle(0, i ? 180 : 0, GAME_WIDTH, 22, 0x000000)
+        .setOrigin(0, i).setScrollFactor(0).setDepth(940));
+      this.tweens.add({ targets: bars, scaleY: 0, delay: 500, duration: 400, ease: 'Quad.in', onComplete: () => bars.forEach(b => b.destroy()) });
+    } else {
+      fadeIn(this, 400);
+    }
 
     this.controls = new Controls(this);
 
@@ -72,19 +68,13 @@ export default class WildernessScene extends Phaser.Scene {
 
   // The walk from Act I to Act III (src/art/wildernessArt.js): Sodom burning behind them under a fire-lit
   // sky that darkens into Act III's night as they go, sand turning to the mountain's rock, and the mountain
-  // looming up until its cliff rises out of the ground at the end.
+  // looming up until its cliff rises out of the ground at the end. FlightScene's landing blends into the
+  // first screen of it, so both build it from src/levels/wilderness.js.
   buildBackground() {
-    buildWildernessArt(this, WORLD_W, (x) => groundTop(x));
-    const layer = (key, f, depth, x = 0) => this.add.image(x, 0, key).setOrigin(0).setScale(ART_SCALE)
-      .setScrollFactor(f, 0).setDepth(depth);
-    layer('wild-sky', WILD.sky, -3);
-    layer('wild-far', WILD.far, -2.8);
-    layer('wild-hills', WILD.hills, -2.6);
-    // the mountain rises on the right from about halfway; its slope starts near the left of the screen at the end
-    layer('wild-massif', WILD.massif, -2.4, (WORLD_W - GAME_WIDTH) * WILD.massif + 60);
-    this.add.image(0, GROUND_Y0, 'wild-ground').setOrigin(0).setScale(ART_SCALE).setDepth(-0.8);
+    addWildernessBackdrop(this);
+    const { rocks } = addWildernessGround(this);
+    rocks.forEach(r => this.terrain.add(r)); // boulders in the way: sandstone early, the mountain's rock near the end
     this.add.image(CLIFF_X - 12, (STREET - 1) * TILE, 'wild-cliff').setOrigin(0, 1).setScale(ART_SCALE).setDepth(-0.9);
-    this.add.image(10 * TILE, groundTop(10 * TILE), 'wild-sign').setOrigin(0.5, 1).setScale(ART_SCALE).setDepth(-0.5);
   }
 
   buildLevel() {
@@ -93,12 +83,6 @@ export default class WildernessScene extends Phaser.Scene {
       const t = this.add.zone(tx * TILE, ty * TILE, w * TILE, WORLD_H - ty * TILE).setOrigin(0);
       this.terrain.add(t);
     }
-    // boulders in the way: sandstone early, the mountain's rock near the end
-    [[19, 'wild-rock0'], [48, 'wild-rock1']].forEach(([tx, key]) => {
-      const x = tx * TILE + TILE / 2;
-      const r = this.add.image(x, groundTop(x) + 1, key).setScale(ART_SCALE).setOrigin(0.5, 1).setDepth(-0.2);
-      this.terrain.add(r);
-    });
   }
 
   finish() {
@@ -178,7 +162,7 @@ export default class WildernessScene extends Phaser.Scene {
       this.tweens.add({ targets: t, y: t.y + 7, alpha: 0, duration: 500, onComplete: () => t.destroy() });
     }) });
     await wait(900);
-    const lines = alive.length ? [[alive[0], t('say.mother'), 1400], ...(alive[1] ? [[alive[1], null, 1000]] : [])] : [];
+    const lines = alive.length ? [[alive[0], t('say.mother'), 1400]] : [];
     for (const [g, text, ms] of lines) { speech(this, g.x, g.y - 20, ms, text); await wait(ms + 200); }
     tears.remove();
 
@@ -206,6 +190,10 @@ export default class WildernessScene extends Phaser.Scene {
     } else {
       if (!this.exiting) {
         this.lot.update(this.controls, delta);
+        if (!this.following && Math.abs(this.lot.x - LOT_START_X) > 2) {
+          this.following = true;
+          this.cameras.main.startFollow(this.lot, true, 0.12, 0.12);
+        }
         this.trail.record(this.lot.x, this.lot.body.bottom, this.lot.facing, this.lot.onGround);
         if (this.lot.x > CLIFF_X - 16) this.finish();
       }

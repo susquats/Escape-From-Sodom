@@ -8,6 +8,10 @@ export default class BootScene extends Phaser.Scene {
     super('BootScene');
   }
 
+  preload() {
+    ['explosion', 'hitHurt', 'jump', 'powerUp', 'hitHurt2', 'powerUp2'].forEach(k => this.load.audio(k, `audio/${k}.wav`));
+  }
+
   create() {
     // Characters and objects: pixel art from src/art/sprites.js
     buildTextures(this);

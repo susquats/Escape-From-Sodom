@@ -8,6 +8,7 @@
 import { Pix, hash, noise1, noise2, dith, mix, bayer, pixTexture } from './pix.js';
 import { ENV } from './palette.js';
 import { MTN, rock, tuft, shrub, vine } from './mountainArt.js';
+import { distantCity } from './ancientCity.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -90,10 +91,15 @@ function farSodom(worldW) {
     const warm = clamp(1 - Math.hypot((x - CITY_X) / 200, (y - HZ) / 30), 0, 1);
     p.set(x, y, ['#0a0610', '#140a16', '#2a0e16', '#4a1414'][clamp(dith(1 + warm * 2.4 - (y - HZ) / 80, x, y), 0, 3)]);
   }
+  // the city: a huddle of flat roofs around its ziggurat, with fires on top and a few lit windows
+  const top = new Int16Array(p.w).fill(p.h);
+  distantCity((x, y) => {
+    if (x < 0 || x >= p.w || y > HZ) return;
+    p.set(x, y, hash(x, y, 29) < 0.06 ? '#ffb040' : '#16080e');
+    top[x] = Math.min(top[x], y);
+  }, CITY_X, HZ, 48, 28);
   for (let x = CITY_X - 48; x < CITY_X + 48; x++) {
-    const h = 4 + Math.round(hash(x >> 2, 0, 28) * 12 * (1 - Math.abs(x - CITY_X) / 54)) + (hash(x >> 1, 1, 28) < 0.08 ? 7 : 0);
-    for (let y = HZ - h; y <= HZ; y++) p.set(x, y, hash(x, y, 29) < 0.06 ? '#ffb040' : '#16080e');
-    if (hash(x >> 2, 2, 28) < 0.4) for (let k = 1; k < 3 + (x & 3); k++) p.set(x, HZ - h - k, G[clamp(4 - k, 1, 4)]);
+    if (top[x] < p.h && hash(x >> 2, 2, 28) < 0.4) for (let k = 1; k < 3 + (x & 3); k++) p.set(x, top[x] - k, G[clamp(4 - k, 1, 4)]);
   }
   return p;
 }

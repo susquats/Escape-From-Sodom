@@ -1,10 +1,11 @@
 // Act I backdrop, painted in code at 2x density: a night sky, a band of fire-lit smoke, a far skyline of
-// silhouettes with lit windows and roof fires, and nearer ruined brick buildings. The layers wrap
+// an ancient mudbrick city on its tell (ziggurat, walls, palms), and nearer burning mudbrick houses. The layers wrap
 // horizontally so they can be repeated for parallax. Style reference: art/reference/style-sheet.webp.
 // Each layer also has a calm variant ('sodom-night-*'): the same city the night before, under the moon, with
 // lamplit windows, whole rooftops and no fire or smoke. Act I opens on it and cross-fades to the burning one.
 import { Pix, hash, noise1, noise2, dith, pixTexture } from './pix.js';
 import { ENV, ENV_NIGHT } from './palette.js';
+import { house, ziggurat, palm, cityWall } from './ancientCity.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wrapSet = (p, x, y, c) => p.set(((x % p.w) + p.w) % p.w, y, c);
@@ -135,7 +136,9 @@ function roofline(w, h, filled) {
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Far skyline: flat silhouettes (towers, domes, stepped temples), lit windows, fires on some roofs.
+// Far skyline: an ancient city on its tell. Flat-roofed mudbrick houses stacked up the mound, a great
+// stepped ziggurat and a smaller temple terrace, date palms, and the city wall with square towers and
+// stepped merlons in front. Few, small windows; fires on some roofs.
 export const FAR_W = 1024, FAR_H = 240;
 const FAR = { body: '#2a0a22', rim: '#5a1628', win: ['#f08a30', '#ffc860', '#c85020'], dark: '#1c0616', lit: '#3a0c22' };
 const FAR_NIGHT = { body: '#0e1024', rim: '#2e3458', win: ['#c8802c', '#f0b454', '#8a5420'], dark: '#080a1a', lit: '#12152c' };
@@ -143,65 +146,117 @@ const FAR_NIGHT = { body: '#0e1024', rim: '#2e3458', win: ['#c8802c', '#f0b454',
 function farSkyline(calm) {
   const C = calm ? FAR_NIGHT : FAR;
   const p = new Pix(FAR_W, FAR_H);
-  const shape = new Uint8Array(FAR_W * FAR_H); // 1 = building
-  const put = (x, y) => { x = ((x % FAR_W) + FAR_W) % FAR_W; if (y >= 0 && y < FAR_H) shape[y * FAR_W + x] = 1; };
-  const rect = (x0, y0, w, h) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) put(x, y); };
-  const windows = [], fires = [];
-  rect(0, FAR_H - 40, FAR_W, 40); // continuous city mass
-  let x = 0, i = 0;
-  while (x < FAR_W) {
-    const r = (k) => hash(i, k, 71);
-    const w = 26 + Math.floor(r(1) * 50), h = 50 + Math.floor(r(2) * 80), top = FAR_H - h;
-    const kind = r(3);
-    rect(x, top, w, h);
-    if (kind < 0.25) {
-      // tower with spire
-      const tw = Math.max(8, Math.floor(w * 0.35)), tx = x + Math.floor((w - tw) / 2), th = 20 + Math.floor(r(4) * 34);
-      rect(tx, top - th, tw, th);
-      for (let k = 0; k < 16; k++) rect(tx + Math.floor(tw / 2) - Math.floor((16 - k) / 6), top - th - 16 + k, (Math.floor((16 - k) / 6)) * 2 + 1, 1);
-    } else if (kind < 0.45) {
-      // dome
-      const rr = Math.floor(w * 0.42), cx = x + w / 2;
-      for (let yy = -rr; yy <= 0; yy++) { const hw = Math.floor(Math.sqrt(rr * rr - yy * yy)); rect(Math.round(cx - hw), top + yy, hw * 2, 1); }
-      rect(Math.round(cx) - 1, top - rr - 6, 2, 6);
-    } else if (kind < 0.62) {
-      // stepped ziggurat
-      for (let s = 1; s <= 3; s++) rect(x + s * 5, top - s * 9, w - s * 10, 9);
-    } else if (kind < 0.8) {
-      // broken top (still whole the night before: a flat roof with a parapet)
-      if (calm) { rect(x, top - 4, w, 4); rect(x + 2, top - 7, 3, 3); rect(x + w - 5, top - 7, 3, 3); }
-      else for (let xx = 0; xx < w; xx++) rect(x + xx, top - Math.floor(noise1((x + xx) / 5, 72) * 18), 1, 18);
-    } else {
-      // crenellated wall
-      for (let xx = 0; xx < w; xx += 6) rect(x + xx, top - 5, 3, 5);
+  const shape = new Uint8Array(FAR_W * FAR_H); // 0 = sky, 1..4 = depth rows (4 = nearest)
+  const at = (x, y) => (y < 0 || y >= FAR_H ? 0 : shape[y * FAR_W + (((x % FAR_W) + FAR_W) % FAR_W)]);
+  const layer = (L) => (x, y) => {
+    x = ((x % FAR_W) + FAR_W) % FAR_W;
+    if (y >= 0 && y < FAR_H && shape[y * FAR_W + x] < L) shape[y * FAR_W + x] = L;
+  };
+  const windows = [], fires = [], beams = [], niches = [];
+  // the tell: a broad mound, highest around the ziggurat (wraps every FAR_W)
+  const TAU = Math.PI * 2;
+  const tell = (x) => {
+    const u = x / FAR_W;
+    return Math.round(FAR_H - 84 - 30 * (0.5 + 0.5 * Math.cos(TAU * (u - 0.3))) - 8 * Math.sin(TAU * 3 * u + 1) * 0.5);
+  };
+  for (let x = 0; x < FAR_W; x++) for (let y = tell(x); y < FAR_H; y++) layer(1)(x, y);
+
+  // the great ziggurat, and a smaller stepped temple terrace across town
+  const zig = ziggurat(layer(2), 308, tell(308) + 30, 230, 22, 5);
+  const shrine = ziggurat(layer(2), 800, tell(800) + 20, 110, 18, 3);
+  for (const z of [zig, shrine]) for (const t of z.tiers) niches.push(t);
+  const stair = { cx: 308, top: zig.shrine.y + zig.shrine.h, bottom: tell(308) + 30 };
+  if (!calm) fires.push([308, 30, 44, 0.37], [800, 18, 30, 0.61]);
+
+  // houses: three rows stepping down the mound; back rows sit higher up the tell
+  const rows = [[2, -2, 12, 24], [3, 20, 16, 30], [3, 44, 18, 32], [3, 70, 18, 30]];
+  rows.forEach(([L, sink, minH, varH], row) => {
+    let x = row * 9, i = 0;
+    while (x < FAR_W) {
+      const r = (k) => hash(i + row * 500, k, 71);
+      const w = 14 + Math.floor(r(1) * 24), h = minH + Math.floor(r(2) * varH);
+      const base = tell(x + (w >> 1)) + sink;
+      // leave the ziggurat's stairway and face clear of the back row
+      if (!(row === 0 && Math.abs(x + w / 2 - 308) < 90) && !(row === 0 && Math.abs(x + w / 2 - 800) < 40)) {
+        const broken = !calm && r(3) < 0.18;
+        const boxes = house(layer(L), x, base, w, h, i + row * 500, { upper: 0.45, shelter: calm ? 0.35 : 0.12 });
+        if (broken) for (let xx = 0; xx < w; xx++) {
+          const d = Math.floor(noise1((x + xx) / 4, 72 + row) * 10);
+          for (let y = base - h - 12; y < base - h - 2 + d; y++) if (at(x + xx, y) === L) shape[y * FAR_W + ((x + xx) % FAR_W)] = 0;
+        }
+        for (const B of boxes) {
+          if (r(4) < 0.6) beams.push([B.x, B.y + 2, B.w, L]);
+          // one or two small windows high on the wall
+          const nw = B.w > 20 ? 2 : 1;
+          for (let k = 0; k < nw; k++) {
+            const q = hash(B.x + k, B.y, 73);
+            const wx = B.x + 3 + Math.floor(((k + 0.5) / nw) * (B.w - 8)), wy = B.y + 5;
+            windows.push([wx, wy, L, q < (calm ? 0.35 : 0.5) ? (q < 0.12 ? 1 : q < 0.3 ? 0 : 2) : -1]);
+          }
+        }
+        if (!calm && r(7) < 0.28) fires.push([x + w * (0.3 + r(8) * 0.4), 10 + r(9) * 16, 12 + r(10) * 20, r(11)]);
+      }
+      x += w + Math.floor(r(5) * 3) - 1;
+      i++;
     }
-    // windows grid
-    for (let wy = top + 8; wy < FAR_H - 6; wy += 11) for (let wx = x + 4; wx < x + w - 5; wx += 8) {
-      const q = hash(wx, wy, 73);
-      if (q < (calm ? 0.16 : 0.3)) windows.push([wx, wy, q < 0.08 ? 1 : q < 0.22 ? 0 : 2]);
-    }
-    if (!calm && r(7) < 0.4) fires.push([x + w * (0.3 + r(8) * 0.4), 14 + r(9) * 22, 16 + r(10) * 26, r(11)]);
-    x += w - Math.floor(r(5) * w * 0.4);
-    i++;
+  });
+
+  // date palms among the houses
+  for (let k = 0; k < 11; k++) {
+    const px = Math.floor(hash(k, 1, 74) * FAR_W);
+    if (Math.abs(px - 308) < 70) continue;
+    palm(layer(3), px, tell(px) + 24, 1.1 + hash(k, 2, 74) * 0.5, k + 7);
   }
+
+  // the city wall along the front, with a gate
+  const towers = cityWall(layer(4), 0, FAR_W, FAR_H - 30, FAR_H, 128, 20, 16);
+
   for (let y = 0; y < FAR_H; y++) for (let x = 0; x < FAR_W; x++) {
-    if (!shape[y * FAR_W + x]) continue;
-    const up = y > 0 && shape[(y - 1) * FAR_W + x];
-    // backlit: a thin warm rim along the tops, a dithered glow rising from the bottom
+    const L = shape[y * FAR_W + x];
+    if (!L) continue;
+    const up = at(x, y - 1), left = at(x - 1, y);
+    // backlit: a thin warm rim along the tops (and where a nearer roof crosses a farther wall), a dithered
+    // glow rising from the bottom, a dark seam down the side of each nearer block
     const glow = clamp((y - FAR_H * 0.55) / (FAR_H * 0.45), 0, 1);
-    p.set(x, y, !up ? C.rim : dith(glow * (calm ? 0.5 : 1.2), x, y) > 0 ? C.lit : C.body);
+    const right = at(x + 1, y);
+    p.set(x, y, up < L ? C.rim : left < L || right < L ? C.dark : dith(glow * (calm ? 0.5 : 1.2), x, y) > 0 ? C.lit : C.body);
   }
-  for (const [wx, wy, k] of windows) {
-    if (!shape[wy * FAR_W + (wx % FAR_W)] || !shape[(wy + 4) * FAR_W + ((wx + 2) % FAR_W)]) continue;
-    for (let yy = 0; yy < 4; yy++) for (let xx = 0; xx < 3; xx++) wrapSet(p, wx + xx, wy + yy, yy === 0 && k === 1 && !calm ? '#fff0b0' : C.win[k]);
+  // ziggurat: recessed niches down each terrace face, and the great central stairway
+  for (const t of niches) for (let x = t.x + 3; x < t.x + t.w - 3; x += 5) for (let y = t.y + 3; y < t.y + t.h - 1; y++) {
+    if (at(x, y) === 2) wrapSet(p, x, y, C.dark);
   }
-  const roof = roofline(FAR_W, FAR_H, (x, y) => shape[y * FAR_W + x]);
+  for (let y = stair.top; y < stair.bottom; y++) {
+    const hw = 5 + Math.floor((y - stair.top) / 10);
+    for (let x = stair.cx - hw; x <= stair.cx + hw; x++) {
+      if (at(x, y) !== 2) continue;
+      const edge = Math.abs(x - stair.cx) >= hw - 1;
+      wrapSet(p, x, y, edge ? C.rim : (y & 1) ? C.lit : C.dark);
+    }
+  }
+  // roof beam ends poking out under the parapets
+  for (const [bx, by, bw, L] of beams) for (let x = bx + 2; x < bx + bw - 1; x += 3) if (at(x, by) === L && at(x, by - 3) === L) wrapSet(p, x, by, C.dark);
+  // windows and the gate
+  for (const [wx, wy, L, k] of windows) {
+    if (at(wx, wy) !== L || at(wx + 1, wy + 3) !== L || at(wx, wy - 3) !== L) continue;
+    for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < 2; xx++) {
+      wrapSet(p, wx + xx, wy + yy, k < 0 ? C.dark : yy === 0 && k === 1 && !calm ? '#fff0b0' : C.win[k]);
+    }
+  }
+  const gate = towers[3] || towers[0];
+  const gx = gate.x + 20 + Math.floor((128 - 20) / 2) - 6;
+  for (let yy = 0; yy < 16; yy++) for (let xx = 0; xx < 12; xx++) {
+    const dx = xx - 5.5, inside = yy >= 5 || dx * dx + (yy - 5) * (yy - 5) <= 30;
+    if (inside) wrapSet(p, gx + xx, FAR_H - 16 + yy, calm ? C.dark : C.win[yy > 9 ? 0 : 2]);
+  }
+  const roof = roofline(FAR_W, FAR_H, (x, y) => shape[y * FAR_W + x] > 0);
   for (const [fx, w, h, sd] of fires) flames(p, fx, w, h, sd, roof);
   return p;
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// Mid ruins: nearer brick buildings, lit on their left sides by fire, arched glowing windows, ragged tops.
+// Mid ruins: nearer mudbrick houses, two and three storeys, flat roofs behind parapets, upper rooms set back,
+// roof beams poking through the walls, small windows under wooden lintels, plaster falling away to show the
+// brick. Lit on their left sides by fire, tops broken and burning; date palms between them.
 export const MID_W = 768, MID_H = 280;
 const MID = ['#12040c', '#200816', '#2e0c1e', '#3e1226', '#521a2c', '#6e2430', '#943630', '#c05232'];
 const MID_NIGHT = ['#06081a', '#0c1024', '#12162e', '#181e38', '#202844', '#2a3452', '#3a4666', '#52607e'];
@@ -210,60 +265,121 @@ function midRuins(calm) {
   const M = calm ? MID_NIGHT : MID;
   const p = new Pix(MID_W, MID_H);
   const id = new Int16Array(MID_W * MID_H).fill(-1);
+  const idAt = (X, y) => (y < 0 || y >= MID_H ? -1 : id[y * MID_W + (((X % MID_W) + MID_W) % MID_W)]);
   const b = [];
   let x = 0, i = 0;
   while (x < MID_W - 20) {
     const r = (k) => hash(i, k, 81);
-    const w = 70 + Math.floor(r(1) * 80), h = 130 + Math.floor(r(2) * 120);
-    b.push({ x, w, h, top: MID_H - h, i });
-    x += w + Math.floor(r(3) * 26) - 6;
+    const w = 90 + Math.floor(r(1) * 70), h = 104 + Math.floor(r(2) * 60);
+    // storeys: the main block, then an upper room set back to one side, sometimes a small third one
+    const blocks = [{ x0: 0, w, top: MID_H - h }];
+    if (r(4) < 0.8) {
+      const uw = Math.floor(w * (0.45 + r(5) * 0.25)), ux = r(6) < 0.5 ? 0 : w - uw, uh = 30 + Math.floor(r(7) * 16);
+      blocks.push({ x0: ux, w: uw, top: MID_H - h - uh });
+      if (r(8) < 0.35) {
+        const tw = Math.floor(uw * 0.5), tx = ux + (ux === 0 ? 0 : uw - tw);
+        blocks.push({ x0: tx, w: tw, top: MID_H - h - uh - 22 });
+      }
+    }
+    b.push({ x, w, blocks, i, gap: Math.floor(r(3) * 30) + 4 });
+    x += w + b[b.length - 1].gap;
     i++;
   }
-  // ragged tops, stored per building
+  const blockAt = (B, lx) => { let t = MID_H; for (const K of B.blocks) if (lx >= K.x0 && lx < K.x0 + K.w) t = Math.min(t, K.top); return t; };
+
+  // date palms in the gaps, behind the houses
+  const palms = new Uint8Array(MID_W * MID_H);
+  for (const B of b) {
+    if (hash(B.i, 20, 88) < 0.35 || B.gap < 12) continue;
+    const px = B.x + B.w + Math.floor(B.gap / 2) - 1;
+    palm((X, y) => { if (y >= 0 && y < MID_H) palms[y * MID_W + (((X % MID_W) + MID_W) % MID_W)] = 1; }, px, MID_H, 3 + hash(B.i, 21, 88) * 0.9, B.i + 30);
+  }
+  for (let y = 0; y < MID_H; y++) for (let X = 0; X < MID_W; X++) {
+    if (!palms[y * MID_W + X]) continue;
+    const up = y > 0 && palms[(y - 1) * MID_W + X];
+    p.set(X, y, !up ? M[calm ? 4 : 5] : M[calm ? 2 : dith(clamp((y - MID_H * 0.4) / MID_H, 0, 1) * 2.4, X, y) > 0 ? 3 : 2]);
+  }
+
+  // silhouettes: storeys with parapets, broken tops on the burning night
   for (const B of b) {
     for (let xx = 0; xx < B.w; xx++) {
       const X = (B.x + xx) % MID_W;
-      const drop = calm ? 0 : Math.floor(Math.pow(noise1((B.x + xx) / 9, 82 + B.i), 2) * 44 / 8) * 8;
-      for (let y = B.top + drop; y < MID_H; y++) id[y * MID_W + X] = B.i;
+      // mudbrick slumps rather than snapping: rounded bites out of the roof, some houses still whole
+      const n = noise1((B.x + xx) / 13, 82 + B.i) * 0.8 + noise1((B.x + xx) / 4, 91 + B.i) * 0.2;
+      const drop = calm || hash(B.i, 14, 86) < 0.3 ? 0 : Math.floor(Math.max(0, n - 0.4) * 90 / 2) * 2;
+      for (let y = blockAt(B, xx) - 4 + drop; y < MID_H; y++) id[y * MID_W + X] = B.i;
     }
   }
   for (let y = 0; y < MID_H; y++) for (let X = 0; X < MID_W; X++) {
     const k = id[y * MID_W + X];
     if (k < 0) continue;
     const B = b[k], lx = (X - B.x + MID_W) % MID_W;
-    const up = y > 0 && id[(y - 1) * MID_W + X] === k;
-    const left = id[y * MID_W + (X + MID_W - 1) % MID_W] === k, right = id[y * MID_W + (X + 1) % MID_W] === k;
-    // bricks 12x6
-    const course = Math.floor(y / 6), sx = lx + (course & 1 ? 6 : 0), ly = y % 6;
-    const mortar = ly === 5 || sx % 12 === 11;
+    const up = idAt(X, y - 1) === k, left = idAt(X - 1, y) === k, right = idAt(X + 1, y) === k;
+    // the nearest roof line above this pixel (parapet coping and its shadow)
+    let roofTop = MID_H;
+    for (const K of B.blocks) if (lx >= K.x0 && lx < K.x0 + K.w && y >= K.top - 4) roofTop = Math.min(roofTop, y - (K.top - 4));
+    // plaster, mottled; where it has fallen away, small mudbricks 8x4
+    const bare = noise2(X / 12, y / 9, 89 + k) > 0.72;
+    const course = y >> 2, sx = lx + (course & 1 ? 4 : 0);
+    const mortar = bare && ((y & 3) === 3 || (sx & 7) === 7);
     // fire light from the lower left (moonlight from the upper right on the calm night)
     const light = calm ? clamp(lx / B.w, 0, 1) * 0.9 + clamp(1 - y / MID_H, 0, 1) * 0.6
       : clamp(1 - lx / B.w, 0, 1) * 0.9 + clamp((y - MID_H * 0.45) / MID_H, 0, 1) * 1.6;
-    let t = 2 + dith(light * 1.6, X, y) + (ly === 0 ? 1 : 0) - (hash(sx >> 3, course, 83) < 0.2 ? 1 : 0);
+    let t = 2 + dith(light * 1.6 + (noise2(X / 5, y / 4, 90) - 0.5) * 0.6, X, y);
     if (mortar) t = 1;
+    // a darker band where one storey steps back from the one below, like a roof terrace wall
+    if (roofTop === 2 || roofTop === 3) t = 4;
+    if (roofTop === 4) t = 1;
     if (!up) t = 6;
     else if (!left) t = calm ? 1 : 5;
     else if (!right) t = calm ? 5 : 0;
     p.set(X, y, M[clamp(t, 0, M.length - 1)]);
   }
-  // arched windows with fire inside
+
+  const inWall = (B, X, y) => idAt(X, y) === B.i && idAt(X, y - 4) === B.i;
   for (const B of b) {
-    for (let wy = B.top + 40; wy < MID_H - 30; wy += 46) for (let wx = B.x + 12; wx < B.x + B.w - 22; wx += 30) {
-      if (id[(wy - 8) * MID_W + (wx + 5) % MID_W] !== B.i || hash(wx, wy, 84) < 0.25) continue;
-      const hot = hash(wx, wy, 85) < 0.55, lamp = calm && hash(wx, wy, 87) < 0.5;
-      for (let yy = -6; yy < 22; yy++) for (let xx = 0; xx < 12; xx++) {
-        const dx = xx - 5.5, inside = yy >= 0 ? true : dx * dx + yy * yy <= 36;
-        const frame = yy >= -1 ? (xx === 0 || xx === 11) : dx * dx + yy * yy > 25 && inside;
-        if (!inside) continue;
-        const v = calm ? (lamp ? 2.4 + clamp((yy + 6) / 28, 0, 1) * 1.6 : 0.3) : hot ? clamp((yy + 6) / 28, 0, 1) * 5 : 0.4;
-        const c = frame ? M[6] : (calm ? ENV_NIGHT : ENV).glow[clamp(dith(v, xx, yy), 0, 5)];
-        wrapSet(p, wx + xx, wy + yy, c);
+    for (const K of B.blocks) {
+      // roof beam ends under each roof line: dark end grain with a lit top
+      const by = K.top + 4;
+      for (let xx = K.x0 + 4; xx < K.x0 + K.w - 4; xx += 9) {
+        const X = B.x + xx;
+        if (!inWall(B, X, by) || !inWall(B, X + 3, by)) continue;
+        for (let dx = -1; dx < 4; dx++) { wrapSet(p, X + dx, by, M[dx < 0 ? 1 : 5]); wrapSet(p, X + dx, by + 1, M[1]); wrapSet(p, X + dx, by + 2, M[0]); }
       }
-      for (let xx = -1; xx < 13; xx++) { wrapSet(p, wx + xx, wy + 22, M[7]); wrapSet(p, wx + xx, wy + 23, M[1]); }
+      // small windows under wooden lintels, one row per storey, a few per wall
+      const rows = K === B.blocks[0] ? [K.top + 16, K.top + 50] : [K.top + 14];
+      for (const wy of rows) for (let wx = B.x + K.x0 + 10; wx < B.x + K.x0 + K.w - 16; wx += 24) {
+        if (wy > MID_H - 24 || hash(wx, wy, 84) < 0.4) continue;
+        if (!inWall(B, wx - 3, wy - 4) || !inWall(B, wx + 11, wy - 4) || blockAt(B, (wx - B.x + MID_W) % MID_W) < K.top) continue;
+        const slot = hash(wx, wy, 86) < 0.35, ww = slot ? 4 : 8, wh = slot ? 12 : 9, ox = slot ? 2 : 0;
+        const hot = hash(wx, wy, 85) < 0.55, lamp = calm && hash(wx, wy, 87) < 0.5;
+        for (let yy = 0; yy < wh; yy++) for (let xx = 0; xx < ww; xx++) {
+          const v = calm ? (lamp ? 2.4 + (yy / wh) * 1.6 : 0.3) : hot ? (yy / wh) * 5 : 0.4;
+          wrapSet(p, wx + ox + xx, wy + yy, (calm ? ENV_NIGHT : ENV).glow[clamp(dith(v, xx, yy), 0, 5)]);
+        }
+        // lintel beam and a sill of mud
+        for (let xx = -3; xx < 11; xx++) { wrapSet(p, wx + xx, wy - 3, M[5]); wrapSet(p, wx + xx, wy - 2, M[1]); }
+        for (let xx = ox - 1; xx < ox + ww + 1; xx++) wrapSet(p, wx + xx, wy + wh, M[6]);
+      }
+    }
+    // a ground-floor doorway, low and square, on some houses
+    if (hash(B.i, 30, 88) < 0.6) {
+      const dx = B.x + 8 + Math.floor(hash(B.i, 31, 88) * (B.w - 30)), dy = MID_H - 30;
+      for (let yy = 0; yy < 30; yy++) for (let xx = 0; xx < 14; xx++) {
+        const edge = xx === 0 || xx === 13;
+        wrapSet(p, dx + xx, dy + yy, edge ? M[0] : calm ? M[0] : (calm ? ENV_NIGHT : ENV).glow[clamp(dith((yy / 30) * 3, xx, yy), 0, 5)]);
+      }
+      for (let xx = -3; xx < 17; xx++) { wrapSet(p, dx + xx, dy - 3, M[5]); wrapSet(p, dx + xx, dy - 2, M[1]); wrapSet(p, dx + xx, dy - 1, M[1]); }
+    }
+    // a reed shelter on the roof, on the calm night
+    if (calm && hash(B.i, 40, 88) < 0.5) {
+      const K = B.blocks[B.blocks.length - 1], sw = Math.max(14, Math.floor(K.w * 0.6)), sx = B.x + K.x0 + Math.floor((K.w - sw) / 2), top = K.top - 4;
+      for (let y = top - 16; y < top; y++) { wrapSet(p, sx, y, M[3]); wrapSet(p, sx + sw - 1, y, M[3]); }
+      for (let xx = -2; xx < sw + 2; xx++) { wrapSet(p, sx + xx, top - 17, M[5]); wrapSet(p, sx + xx, top - 16, M[2]); }
     }
   }
   if (calm) return p;
-  // fires on some ragged tops
+  // fires on some broken tops
   const roof = roofline(MID_W, MID_H, (x, y) => id[y * MID_W + x] >= 0);
   for (const B of b) {
     if (hash(B.i, 9, 86) > 0.5) continue;

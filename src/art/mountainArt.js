@@ -5,6 +5,7 @@
 // mountain rises on with a glowing cave cut into its foot.
 // Style reference: the mountain panel of art/reference/style-sheet.webp.
 import { Pix, hash, noise1, noise2, dith, pixTexture } from './pix.js';
+import { distantCity } from './ancientCity.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -110,11 +111,15 @@ function farCity() {
     const warm = clamp(1 - Math.hypot((x - CITY_X) / 180, (y - HORIZON) / 30), 0, 1);
     p.set(x, y, ['#0a0610', '#140a16', '#2a0e16', '#4a1414'][clamp(dith(1 + warm * 2.4 - (y - HORIZON) / 80, x, y), 0, 3)]);
   }
-  // the city: a low huddle of towers with fires on top and lit windows
+    // the city: a huddle of flat roofs around its ziggurat, with fires on top and a few lit windows
+  const top = new Int16Array(p.w).fill(p.h);
+  distantCity((x, y) => {
+    if (x < 0 || x >= p.w || y > HORIZON) return;
+    p.set(x, y, hash(x, y, 66) < 0.06 ? '#ffb040' : '#16080e');
+    top[x] = Math.min(top[x], y);
+  }, CITY_X, HORIZON, 44, 65);
   for (let x = CITY_X - 44; x < CITY_X + 44; x++) {
-    const h = 3 + Math.round(hash(x >> 2, 0, 65) * 10 * (1 - Math.abs(x - CITY_X) / 50)) + (hash(x >> 1, 1, 65) < 0.08 ? 6 : 0);
-    for (let y = HORIZON - h; y <= HORIZON; y++) p.set(x, y, hash(x, y, 66) < 0.06 ? '#ffb040' : '#16080e');
-    if (hash(x >> 2, 2, 65) < 0.35) for (let k = 1; k < 3 + (x & 3); k++) p.set(x, HORIZON - h - k, G[clamp(4 - k, 1, 4)]);
+    if (top[x] < p.h && hash(x >> 2, 2, 65) < 0.35) for (let k = 1; k < 3 + (x & 3); k++) p.set(x, top[x] - k, G[clamp(4 - k, 1, 4)]);
   }
   return p;
 }
@@ -426,7 +431,7 @@ function summit() {
 export const PEAK = { x: 170, mouthL: 188, mouthR: 222 }; // world units
 function peak() {
   // tall enough to fill the ending's screen too (EndingScene)
-  const W = 300, H = 304, back = new Pix(W, H), front = new Pix(W, H), t = rock(W, H + 16, 20, 81, 1.4);
+  const W = 300, H = 304, back = new Pix(W, H), front = new Pix(W, H), dark = new Pix(W, H), t = rock(W, H + 16, 20, 81, 1.4);
   const ML = (PEAK.mouthL - PEAK.x) * 2, MR = (PEAK.mouthR - PEAK.x) * 2, cx = (ML + MR) / 2, r = (MR - ML) / 2;
   const spring = H - 22, rv = 38; // the mouth's sides rise to here, then a ragged half-ellipse rv high
   const bump = (y, c, w) => Math.max(0, 1 - Math.abs(y - c) / w);
@@ -454,6 +459,7 @@ function peak() {
       const f = clamp((x - ML) / (MR - ML), 0, 1);
       const k = m < 3 && y < H - 1 ? 0.2 : 0.3 + f * f * 3.4 + (y - spring + rv) / (H - spring + rv) * 0.8;
       back.set(x, y, MTN.glow[clamp(dith(k, x, y), 0, 5)]);
+      dark.set(x, y, '#0a0608');
       continue;
     }
     const d = x - ex(y);
@@ -483,7 +489,7 @@ function peak() {
       if (k % 4 === 1) front.set(x + 1, y, MTN.plant[4]);
     }
   }
-  return { back, front };
+  return { back, front, dark };
 }
 
 let rockTone = null;
@@ -499,6 +505,7 @@ export function buildMountainArt(scene) {
   const pk = peak();
   pixTexture(scene, 'mtn-peak', pk.back);
   pixTexture(scene, 'mtn-peak-front', pk.front);
+  pixTexture(scene, 'mtn-peak-dark', pk.dark);
   [0, 1, 2].forEach(v => pixTexture(scene, `mtn-cloud${v}`, cloud(v)));
 }
 

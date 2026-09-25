@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SODOMITE } from '../config.js';
-import { popText, puff } from '../fx.js';
+import { popText, puff, sfx } from '../fx.js';
 import { viewX, ART_SCALE } from '../view.js';
 import { fitBody } from '../art/sprites.js';
 import { t } from '../i18n.js';
@@ -58,12 +58,14 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
 
   squash() {
     this.flatten();
+    sfx(this.scene, 'hitHurt2');
     puff(this.scene, this.x, this.y, 0xffffff);
     popText(this.scene, this.x, this.y - 8, t('pop.squish'));
   }
 
   burn() {
     this.flatten();
+    sfx(this.scene, 'hitHurt2', 0.3);
     this.setTint(0x222222);
     puff(this.scene, this.x, this.y, 0xff8a1e);
   }
@@ -72,6 +74,7 @@ export default class Sodomite extends Phaser.Physics.Arcade.Sprite {
     this.anims.stop();
     this.alive = false;
     this.body.enable = false;
+    sfx(this.scene, 'hitHurt2');
     popText(this.scene, this.x, this.y - 8, t('pop.bonk'), '#ffe14a');
     this.scene.tweens.add({ targets: this, x: this.x + (Math.sign(this.x - fromX) || 1) * 60,
       y: this.y - 40, angle: 540, alpha: 0, duration: 600, onComplete: () => this.setVisible(false) });

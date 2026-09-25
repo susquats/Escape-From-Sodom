@@ -4,12 +4,15 @@ import Carrier from '../objects/Carrier.js';
 import { COMET_HEAD } from '../art/items.js';
 import RunHud from '../ui/RunHud.js';
 import Controls from '../input/Controls.js';
-import { popText, puff, loseLife, speech } from '../fx.js';
+import { popText, puff, sfx, loseLife, speech, letterbox } from '../fx.js';
 import { run } from '../runState.js';
-import { setupView, fadeIn, fadeOut, shake, flash, ART_SCALE } from '../view.js';
+import { setupView, fadeIn, shake, flash, ART_SCALE } from '../view.js';
 import { buildingTexture } from '../art/flightBuildings.js';
 import { buildSodomBackdrop } from '../art/sodomBackdrop.js';
+import { fireBand, ruinsBand, rubbleBand, RUINS_H, RUBBLE_H } from '../art/flightRuins.js';
+import { pixTexture } from '../art/pix.js';
 import { t } from '../i18n.js';
+import { GROUND_Y, LOT_START_X, addWildernessBackdrop, addWildernessGround } from '../levels/wilderness.js';
 
 // Seconds after the first flap; obstacles spawn at x = GAME_WIDTH + 20.
 // Pipes reach the carrier ~2.9 s after spawning and fireballs ~1.7 s, so fireballs are timed to arrive at
@@ -45,7 +48,9 @@ const CLUSTERS = [
   [{ w: 24, s: 2 }, { w: 18, s: 0, d: 16 }, { w: 22, s: 1, d: 28 }],
 ];
 const LANDING_AT = 33;
-const GROUND_Y = 150;
+// where each of them stands, relative to the carrier (x = 160), once set down: as the wilderness lines them up
+// behind Lot (see FAMILY.spacing)
+const SPOT = { lot: LOT_START_X - 160, daughter1: LOT_START_X - 160 - 18, daughter2: LOT_START_X - 160 - 34, wife: LOT_START_X - 160 - 50 };
 const STROKE = { fontFamily: 'monospace', fontSize: '8px', color: '#fff', stroke: '#000', strokeThickness: 2 };
 
 export default class FlightScene extends Phaser.Scene {
@@ -142,6 +147,11 @@ export default class FlightScene extends Phaser.Scene {
   // The burning city from Act I (src/art/sodomBackdrop.js) scrolling past, and a band of fire along the bottom.
   buildBackground() {
     buildSodomBackdrop(this);
+    if (!this.textures.exists('flight-ruins')) {
+      pixTexture(this, 'flight-fire', fireBand());
+      pixTexture(this, 'flight-ruins', ruinsBand());
+      pixTexture(this, 'flight-rubble', rubbleBand());
+    }
     this.towerCount = 0;
     this.hangCount = 0;
     this.add.image(0, 0, 'sodom-sky').setOrigin(0).setScale(ART_SCALE).setScrollFactor(0).setDepth(-3);
@@ -153,11 +163,16 @@ export default class FlightScene extends Phaser.Scene {
       // darker and lower than in Act I, so the obstacles stand out in front of it
       { factor: 0.45, tile: band('sodom-mid', 78, 140, -2.2).setTint(0x8a7080) },
       { factor: 1, tile: band('pitglow', GAME_HEIGHT - 30, 32, -1.9) },
+      // the tops of ruined buildings burning along the bottom, with rubble in front (src/art/flightRuins.js);
+      // the ruins are dimmed so the obstacles, painted in the same style, stay clearly in front
+      { factor: 0.7, tile: band('flight-fire', GAME_HEIGHT - RUINS_H / 2, RUINS_H / 2, -1.86) },
+      { factor: 0.7, tile: band('flight-ruins', GAME_HEIGHT - RUINS_H / 2, RUINS_H / 2, -1.85).setTint(0xa07878) },
+      { factor: 1, tile: band('flight-rubble', GAME_HEIGHT - RUBBLE_H / 2, RUBBLE_H / 2, -1.75) },
     ];
     // fire along the bottom: falling in means death, so it should look like it
     this.fireRow = [];
     for (let x = 0; x < GAME_WIDTH + 24; x += 12) {
-      const f = this.add.sprite(x, GAME_HEIGHT + 3, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setScrollFactor(0).setDepth(-1.8)
+      const f = this.add.sprite(x, GAME_HEIGHT - 8, 'flame').setScale(ART_SCALE).setOrigin(0.5, 1).setScrollFactor(0).setDepth(-1.8)
         .play({ key: 'flame-flicker', startFrame: (x / 12) % 4 });
       this.tweens.add({ targets: f, scaleY: Phaser.Math.FloatBetween(1.1, 1.5) * ART_SCALE, duration: Phaser.Math.Between(180, 320), yoyo: true, repeat: -1 });
       this.fireRow.push(f);
@@ -247,14 +262,17 @@ export default class FlightScene extends Phaser.Scene {
 
   startLanding() {
     this.landing = true;
+    letterbox(this); // stays up until the walk begins in WildernessScene
     const c = this.carrier;
     c.body.enable = false;
     c.freeze = true;
-    // desert strip (src/art/flightProps.js); its sandy lip is 3 units below the top of the texture
-    const ground = this.add.tileSprite(GAME_WIDTH, GROUND_Y - 3, GAME_WIDTH * 2, (GAME_HEIGHT - GROUND_Y + 3) * 2, 'fland')
-      .setScale(ART_SCALE).setOrigin(0).setDepth(8);
-    this.tweens.add({ targets: ground, x: 0, duration: 1200 });
-    this.tweens.add({ targets: [...this.fireRow, this.layers[3].tile], alpha: 0, duration: 1200 });
+    // the wilderness blends in: its sky and Sodom on the horizon fade over the flight's, and its ground slides in
+    // from the right. WildernessScene starts with exactly this picture.
+    const veil = addWildernessBackdrop(this, { alpha: 0, depthBase: 1.25 });
+    const props = addWildernessGround(this, GAME_WIDTH, [[19, 'wild-rock0']]);
+    this.tweens.add({ targets: veil, alpha: 1, duration: 1200 });
+    this.tweens.add({ targets: props.all, x: `-=${GAME_WIDTH}`, duration: 1200 });
+    this.tweens.add({ targets: [...this.fireRow, ...this.layers.slice(3).map(l => l.tile)], alpha: 0, duration: 1200 });
     this.tweens.addCounter({ from: 1, to: 0, duration: 1200, onUpdate: t => { this.scrollMul = t.getValue(); } });
     this.tweens.add({ targets: c.view, x: 160, y: 100, rotation: 0, duration: 1400, onComplete: () => this.release() });
   }
@@ -267,8 +285,17 @@ export default class FlightScene extends Phaser.Scene {
       p.setOrigin(0.5, 0.5);
       p.rotation = 0;
       const targetY = GROUND_Y - v.y - p.displayHeight / 2;
-      this.tweens.add({ targets: p, x: (i - (people.length - 1) / 2) * 14, y: targetY, angle: 90, duration: 350, ease: 'Quad.in',
+      const sx = p.scaleX, sy = p.scaleY;
+      // drop straight down, accelerating; no tumbling or air-drag look
+      this.tweens.add({ targets: p, x: SPOT[p.texture.key], y: targetY, duration: 350, ease: 'Quad.in',
         onComplete: () => {
+          p.anims.stop(); p.setFrame(0);
+          // squash on impact, then a tiny rebound and settle
+          this.tweens.add({ targets: p, scaleX: sx * 1.2, scaleY: sy * 0.8, y: targetY + p.displayHeight * 0.1, duration: 70, yoyo: true,
+            onComplete: () => {
+              p.setScale(sx, sy);
+              this.tweens.add({ targets: p, y: targetY - 3, duration: 90, yoyo: true, ease: 'Quad.out' });
+            } });
           if (i !== 0) return;
           shake(this, 150, 0.008);
           popText(this, 160, 140, t('pop.thud'));
@@ -276,10 +303,6 @@ export default class FlightScene extends Phaser.Scene {
         } });
     });
     c.danglers.length = 0;
-    this.time.delayedCall(1350, () => {
-      people.forEach(p => { p.anims.stop(); p.setFrame(0); }); // back on their feet
-      this.tweens.add({ targets: people, angle: 0, duration: 150 });
-    });
     // the angels give back anyone lost in the flight, and Lot rejoices
     const lostKeys = ['wife', 'daughter1', 'daughter2'].filter(k => run.lost.has(k));
     if (lostKeys.length) {
@@ -287,20 +310,22 @@ export default class FlightScene extends Phaser.Scene {
         flash(this, 300, 255, 240, 200);
         lostKeys.forEach((k, i) => {
           run.lost.delete(k);
-          const x = v.x + (people.length * 7 + 14 + i * 14);
+          const x = v.x + SPOT[k];
           this.add.sprite(x, GROUND_Y - 12, k, 0).setScale(ART_SCALE).setOrigin(0.5).setDepth(9);
           puff(this, x, GROUND_Y - 10, 0xffe14a);
+          sfx(this, 'powerUp2');
           popText(this, x, GROUND_Y - 30, t('pop.saved'), '#ffe14a');
         });
         const lot = people.find(q => q.texture.key === 'lot');
         if (lot) {
           lot.setFlipX(true);
           speech(this, v.x + lot.x, GROUND_Y - 30, 1800, t('say.alive'));
+          this.time.delayedCall(2000, () => lot.setFlipX(false)); // facing the mountain again, as he starts the walk
         }
       });
     }
     this.time.delayedCall(lostKeys.length ? 4000 : 2150, () => {
-      fadeOut(this, 500, () => this.scene.start('WildernessScene'));
+      this.scene.start('WildernessScene', { fromFlight: true }); // no cut: the walk continues from here
     });
   }
 }

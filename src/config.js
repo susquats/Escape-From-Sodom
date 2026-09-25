@@ -102,17 +102,18 @@ export const MOUNTAIN = {
   bounceVelocity: 330,   // auto-bounce (~60 px apex with gravity 900)
   columnLeft: 56,
   columnRight: 264,
-  stepMin: 38,           // vertical distance between platforms (must stay < ~55)
-  stepMax: 52,
+  stepMin: 44,           // vertical distance between platforms (must stay < ~55)
+  stepMax: 56,
   maxDx: 70,             // max horizontal offset from the previous platform (a bounce only gives ~50 px of air travel)
-  widthStart: 48,
-  widthEnd: 28,
+  minDx: 32,             // min horizontal offset, so the climb zigzags instead of running straight up
+  widthStart: 44,
+  widthEnd: 24,
   movingFrom: 0.35,      // fraction of the climb after which moving platforms can appear
-  movingChance: 0.25,
+  movingChance: 0.3,
   movingRange: 40,       // px each side
   movingMs: 1600,
   crumbleFrom: 0.1,      // crumbling ledges come first, moving ones a little later
-  crumbleChance: 0.25,
+  crumbleChance: 0.3,
   crumbleRespawnMs: 2500,
   cameraLead: 110,       // Lot's screen y when the camera is pushing up
   topY: 70,              // y of the final platform

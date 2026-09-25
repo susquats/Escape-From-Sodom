@@ -5,7 +5,7 @@ import Controls from '../input/Controls.js';
 import RunHud from '../ui/RunHud.js';
 import MountainFollowers from '../objects/MountainFollowers.js';
 import { run } from '../runState.js';
-import { popText, puff, loseLife, speech, letterbox } from '../fx.js';
+import { popText, puff, sfx, loseLife, speech, letterbox } from '../fx.js';
 import { setupView, fadeIn, fadeOut, shake, setViewY, viewY, ART_SCALE } from '../view.js';
 import { buildMountainArt, buildCliff, ledgeKey, SUMMIT_LIP, LEDGE_HEADROOM, CITY_X, HORIZON, PEAK } from '../art/mountainArt.js';
 import { noise1 } from '../art/pix.js';
@@ -168,7 +168,11 @@ export default class MountainScene extends Phaser.Scene {
       // a moving platform sweeps +-movingRange, so keep hops to/from it short
       const dxMax = type === 'moving' || prevMoving ? M.maxDx - M.movingRange : M.maxDx;
       const minX = M.columnLeft + w / 2, maxX = M.columnRight - w / 2;
-      const x = Phaser.Math.Clamp(prevX + rnd.between(-dxMax, dxMax), minX, maxX);
+      const dxMin = Math.min(M.minDx, dxMax - 8);
+      let dx = rnd.between(dxMin, dxMax) * (rnd.frac() < 0.5 ? -1 : 1);
+      // if a wall would squash the hop into a near-vertical one, go the other way
+      if (Math.abs(Phaser.Math.Clamp(prevX + dx, minX, maxX) - prevX) < dxMin) dx = -dx;
+      const x = Phaser.Math.Clamp(prevX + dx, minX, maxX);
       this.makePlatform(x, y, w, type);
       prevMoving = type === 'moving';
       prevCrumble = type === 'crumble';
@@ -180,6 +184,8 @@ export default class MountainScene extends Phaser.Scene {
     // The rock right of the mouth is also drawn in front of Lot, so he disappears into the mountain.
     this.add.image(0, M.topY - 3 - SUMMIT_LIP / 2, 'mtn-summit').setOrigin(0).setScale(ART_SCALE).setDepth(-1);
     this.add.image(PEAK.x, M.topY - 3, 'mtn-peak').setOrigin(0, 1).setScale(ART_SCALE).setDepth(-0.95);
+    // the cave starts out dark; the light comes up as the daughters talk (familyEnters)
+    this.caveDark = this.add.image(PEAK.x, M.topY - 3, 'mtn-peak-dark').setOrigin(0, 1).setScale(ART_SCALE).setDepth(-0.9);
     this.add.image(PEAK.x, M.topY - 3, 'mtn-peak-front').setOrigin(0, 1).setScale(ART_SCALE).setDepth(0.5);
   }
 
@@ -203,11 +209,23 @@ export default class MountainScene extends Phaser.Scene {
 
   landOn(p) {
     if (this.atTop || this.dead) return;
-    if (p.kind === 'top') { this.reachTop(); return; }
+    if (p.kind === 'top') { this.reachSummit(); return; }
     const lot = this.lot;
     lot.body.setVelocityY(-MOUNTAIN.bounceVelocity);
+    sfx(this, 'jump', 0.3);
     this.tweens.add({ targets: lot, scaleX: 1.2 * ART_SCALE, scaleY: 0.8 * ART_SCALE, duration: 80, yoyo: true });
     if (p.kind === 'crumble') this.crumble(p);
+  }
+
+  // The cinematic waits until the daughters are all with him: any still turned to salt are set out on the plateau
+  // (once) for Lot to collect, and the cutscene starts when the last is saved.
+  reachSummit() {
+    const missing = ['daughter1', 'daughter2'].filter(k => run.lost.has(k));
+    if (!missing.length) { this.reachTop(); return; }
+    missing.filter(k => !this.salts.some(s => s.key === k)).forEach((k, i) => {
+      const x = Phaser.Math.Clamp(this.lot.x + (i ? 36 : -36), MOUNTAIN.columnLeft + 12, MOUNTAIN.columnRight - 12);
+      this.dropSalt(k, x, MOUNTAIN.topY - 3);
+    });
   }
 
   // On the summit the bouncing stops and a cinematic takes over: the view letterboxes, Lot walks to the foot of
@@ -222,7 +240,7 @@ export default class MountainScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, GAME_WIDTH, MOUNTAIN.height);
     this.followers.stopX = Infinity;
     const wait = (ms) => new Promise(r => this.time.delayedCall(ms, r));
-    const box = letterbox(this);
+    letterbox(this); // stays up through the daughters' scene until the fade to the ending
     this.walkTo = { x: PEAK.mouthL - 40 };
     await new Promise(r => { this.walkTo.done = r; });
     this.walkTo = null;
@@ -241,6 +259,7 @@ export default class MountainScene extends Phaser.Scene {
       ...crew.map(({ key, sprite }) => ({ o: sprite, jump: AIR_FRAMES[key].jump, idle: () => { sprite.anims.stop(); sprite.setFrame(0); } }))];
     lot.body.enable = false;
     for (let n = 0; n < 3; n++) {
+      if (n === 0) cheers.forEach(({ o }, i) => speech(this, o.x, (o.body ? o.body.top : o.y - 20) - 3 - (i % 2) * 12, 1600, t('say.cheer')));
       cheers.forEach(({ o, jump }, i) => this.time.delayedCall(i * 90, () => {
         o.anims.stop(); o.setFrame(jump);
         puff(this, o.x, ground - 12, i % 2 ? 0xffe14a : 0xffffff, 5);
@@ -256,7 +275,6 @@ export default class MountainScene extends Phaser.Scene {
     const line = t('say.rest');
     speech(this, lot.x, lot.body.top - 3, 2200, line);
     await wait(2500);
-    box.hide();
     this.entered = true;
   }
 
@@ -304,9 +322,11 @@ export default class MountainScene extends Phaser.Scene {
     if (other) {
       lead.setFlipX(true); // they face each other
       await wait(300);
-      for (const [g, ms] of [[other, 800], [lead, 800], [other, 600], [lead, 900]]) { say(g, ms); await wait(ms + 250); }
+      this.tweens.add({ targets: this.caveDark, alpha: 0, duration: 1800, ease: 'Sine.inOut' });
+      for (const [g, ms] of [[other, 800], [lead, 900]]) { say(g, ms); await wait(ms + 250); }
       lead.setFlipX(false);
     } else {
+      this.tweens.add({ targets: this.caveDark, alpha: 0, duration: 1800, ease: 'Sine.inOut' });
       say(lead, 1000);
       await wait(1300);
     }
@@ -338,6 +358,7 @@ export default class MountainScene extends Phaser.Scene {
       // a family member is lost in Lot's place; Lot bounces back up and carries on
       this.graceMs = 2000;
       this.lot.body.setVelocityY(-500);
+      sfx(this, 'jump', 0.3);
       return;
     }
     this.dead = true;
@@ -345,15 +366,18 @@ export default class MountainScene extends Phaser.Scene {
   }
 
   // A fallen daughter turns to salt on the next ledge up; touching it brings her back.
-  dropSalt(key) {
+  dropSalt(key, atX, atY) {
     const cam = this.cameras.main;
-    const top = viewY(cam) + 20, bottom = viewY(cam) + GAME_HEIGHT - 30;
-    const ledge = this.platforms.getChildren()
-      .filter(p => p.kind === 'normal' && p.y > top && p.y < bottom)
-      .sort((a, b) => b.y - a.y)[0];
-    if (!ledge) return;
-    const half = Math.max(0, ledge.width / 2 - 8);
-    const x = ledge.x + Phaser.Math.Between(-half, half), y = ledge.y - 3;
+    let x = atX, y = atY;
+    if (x === undefined) {
+      const top = viewY(cam) + 20, bottom = viewY(cam) + GAME_HEIGHT - 30;
+      const ledge = this.platforms.getChildren()
+        .filter(p => p.kind === 'normal' && p.y > top && p.y < bottom)
+        .sort((a, b) => b.y - a.y)[0];
+      if (!ledge) return;
+      const half = Math.max(0, ledge.width / 2 - 8);
+      x = ledge.x + Phaser.Math.Between(-half, half); y = ledge.y - 3;
+    }
     const img = this.add.image(x, y, 'salt').setOrigin(0.5, 1).setScale(ART_SCALE).setDepth(-0.6);
     this.tweens.add({ targets: img, alpha: 0.6, duration: 350, yoyo: true, repeat: -1 });
     puff(this, x, y - 6);
@@ -365,6 +389,7 @@ export default class MountainScene extends Phaser.Scene {
     this.salts = this.salts.filter(s => {
       if (Math.abs(lot.x - s.img.x) < 12 && Math.abs(lot.body.center.y - (s.img.y - 6)) < 16) {
         puff(this, s.img.x, s.img.y - 6, 0xffe14a);
+        sfx(this, 'powerUp2');
         popText(this, s.img.x, s.img.y - 20, t('pop.saved'), '#ffe14a');
         run.lost.delete(s.key);
         this.followers.restore(s.key);
@@ -372,7 +397,11 @@ export default class MountainScene extends Phaser.Scene {
         s.img.destroy();
         return false;
       }
-      if (s.img.y > viewY(cam) + GAME_HEIGHT + 16) { s.img.destroy(); return false; } // left behind
+      if (s.img.y > viewY(cam) + GAME_HEIGHT + 16) { // left behind: she reappears on a ledge in view, never lost for good
+        s.img.destroy();
+        this.time.delayedCall(0, () => this.dropSalt(s.key));
+        return false;
+      }
       return true;
     });
   }
@@ -411,7 +440,7 @@ export default class MountainScene extends Phaser.Scene {
     this.updateSalts();
 
     if (lot.y > viewY(cam) + GAME_HEIGHT + 16) {
-      if (this.invincible || this.graceMs > 0) lot.body.setVelocityY(-500);
+      if (this.invincible || this.graceMs > 0) { lot.body.setVelocityY(-500); sfx(this, 'jump', 0.3); }
       else this.die();
     }
   }

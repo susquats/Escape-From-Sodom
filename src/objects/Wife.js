@@ -72,7 +72,7 @@ export default class Wife extends FamilyMember {
     this.state = 'lastLook'; // no timers, no hits, no rescue
     this.lookTimer = Infinity;
     this.scene.time.delayedCall(WIFE.noticeMs, () => {
-      this.setFlipX(true);
+      if (!this.bang) return;
       this.bang.setText('...');
       this.tremble = this.scene.tweens.add({ targets: this, x: this.x + 1, duration: 40, yoyo: true, repeat: -1 });
     });
@@ -84,7 +84,7 @@ export default class Wife extends FamilyMember {
     this.state = 'lost';
     run.lost.add('wife');
     this.body.enable = false;
-    this.setFlipX(true).setTexture(saltPillar(this.scene)).setDepth(-0.6);
+    this.setTexture(saltPillar(this.scene)).setDepth(-0.6); // keeps the facing she had when struck
   }
 
   cancelLook() {

@@ -1,13 +1,19 @@
 import { GAME_WIDTH, GAME_HEIGHT } from './config.js';
 import { t } from './i18n.js';
 import { run, spendLife, resetRun, restoreCheckpoint } from './runState.js';
+// Plays one of the loaded sound effects (explosion, hitHurt, jump, powerUp).
+export function sfx(scene, key, volume = 0.5) {
+  scene.sound.play(key, { volume });
+}
+
 // Call when Lot dies: spends a family life (or ends the run) and announces it. The next member
 // (wife, then daughters) turns red and dies if a family is passed; play continues where it is.
 // Returns { gameOver, name }; on gameOver the caller sends the player back to the title.
 export function loseLife(scene, family = null) {
+  sfx(scene, 'hitHurt');
   const res = spendLife();
   const { gameOver, name } = res;
-  const msg = gameOver ? t('life.gameOver') : t('life.lost', { name: t(`name.${name}`) });
+  const msg = gameOver ? t('life.gameOver') : t(`gone.${name}`);
   const txt = scene.add.text(160, 40, msg, { fontFamily: 'monospace', fontSize: '8px', color: gameOver ? '#ff5a5a' : '#ffe14a',
     stroke: '#000', strokeThickness: 2, align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(950);
   if (!gameOver) scene.tweens.add({ targets: txt, alpha: 0, delay: 1200, duration: 500, onComplete: () => txt.destroy() });
@@ -21,6 +27,7 @@ export function loseLife(scene, family = null) {
 // (nobody left to turn to salt): the family as it was at the checkpoint is restored and Act I restarts at the last checkpoint,
 // or the whole run resets if none was reached.
 export function saltLife(scene, family, fell = false) {
+  sfx(scene, 'hitHurt');
   const m = family.members.find(k => ['following', 'rejoining', 'lookingBack'].includes(k.state));
   const gameOver = !m;
   const hasCp = run.checkpointX !== null;

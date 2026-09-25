@@ -1,22 +1,14 @@
-// The final cutscene's art. Everything is drawn from scratch by tools/ending/build.py into public/ending/:
-// a fixed 320x180 cave backdrop plus separate character sprites laid over it (1 texture px = 1 world unit),
-// so a lost daughter just isn't drawn and the winks / Zs can animate. The sparkle and glow are painted here.
+// The final cutscene's art. tools/ending/build.py cuts it out of a painting of the whole scene into
+// public/ending/: the cave (Lot and the jug baked in), each daughter as her own sprite so a lost one just isn't
+// drawn, a winking frame for each, and the three Zs. Their positions are in layout.json (1 px = 1 world unit).
+// The sparkle and glow are painted here.
 import { Pix, pixTexture } from './pix.js';
 
-// Top-left of each sprite in the scene, world units (LAYOUT in tools/ending/build.py).
-export const LAYOUT = {
-  lot: [4, 84], 'jug-small': [40, 132],
-  daughter1: [150, 92], daughter2: [236, 92],
-  jug: [199, 116],
-};
-// Zs rise from Lot's head (lowest first), and where each daughter's winking eye is (for the sparkle).
-export const ZS = [[42, 96], [50, 84], [60, 70]];
-export const WINK_EYE = { daughter1: [183, 113], daughter2: [269, 113] };
-
 export function loadEndingArt(scene) {
-  for (const k of ['cave', 'lot', 'jug', 'jug-small', 'daughter1', 'daughter1-wink', 'daughter2', 'daughter2-wink', 'z0', 'z1', 'z2']) {
+  for (const k of ['cave', 'daughter1', 'daughter1-wink', 'daughter2', 'daughter2-wink', 'z0', 'z1', 'z2']) {
     scene.load.image(`end-${k}`, `ending/${k}.png`);
   }
+  scene.load.json('end-layout', 'ending/layout.json');
 }
 
 function sparkle() {

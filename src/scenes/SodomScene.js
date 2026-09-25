@@ -13,7 +13,7 @@ import Checkpoint from '../objects/Checkpoint.js';
 import AngelBoost from '../objects/AngelBoost.js';
 import FamilyHud from '../ui/FamilyHud.js';
 import { run, resetRun, saveCheckpoint } from '../runState.js';
-import { popText, saltLife, letterbox, speech, puff } from '../fx.js';
+import { popText, saltLife, letterbox, speech, puff, sfx } from '../fx.js';
 import { SODOM_SECTIONS } from '../levels/sodom.js';
 import { parseLevel, ROWS, SOLID, ONE_WAY, TILE_CHARS } from '../levels/parseLevel.js';
 import { hash } from '../art/pix.js';
@@ -49,7 +49,7 @@ export default class SodomScene extends Phaser.Scene {
     this.physics.world.setBoundsCollision(true, true, true, false);
 
     // debug: ?cp=N starts at the Nth checkpoint (first load only)
-    const cps = LEVEL.entities.filter(e => e.type === 'checkpoint');
+    const cps = LEVEL.entities.filter(e => e.type === 'checkpoint').sort((a, b) => a.col - b.col); // left to right
     if (!cpDebugApplied) {
       cpDebugApplied = true;
       if (START_CP > 0 && run.checkpointX === null && cps[START_CP - 1]) {
@@ -402,6 +402,7 @@ export default class SodomScene extends Phaser.Scene {
       flash(this, 300, 255, 240, 200);
       lostOnes.forEach(m => m.restore());
       await wait(150);
+      if (lostOnes.length) sfx(this, 'powerUp2');
       lostOnes.forEach(m => { puff(this, m.x, m.y - 8, 0xffe14a); popText(this, m.x, m.y - 24, t('pop.saved'), '#ffe14a'); });
       await wait(700);
       lot.setFlipX(true); // turn back toward the family

@@ -1,4 +1,4 @@
-import { popText, puff } from '../fx.js';
+import { popText, puff, sfx } from '../fx.js';
 import { ART_SCALE } from '../view.js';
 import { t } from '../i18n.js';
 
@@ -18,6 +18,7 @@ export default class Checkpoint {
     this.sprite.setFrame(1);
     if (silent) return;
     scene.tweens.add({ targets: this.sprite, scaleX: 0.7 * ART_SCALE, duration: 250, yoyo: true, repeat: 3 });
+    sfx(scene, 'powerUp');
     popText(scene, this.x, this.feetY - 26, t('pop.checkpoint'), '#ffe14a');
     puff(scene, this.x, this.feetY - 20, 0xffe14a);
   }
